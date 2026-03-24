@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>sstg_map_manager</name>
+  <version>0.0.0</version>
+  <description>Topological map management for SSTG Navigation System</description>
+  <maintainer email="Daojie.PENG@qq.com">daojie</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>sstg_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <exec_depend>python3-networkx</exec_depend>
+  <exec_depend>python3-fastapi</exec_depend>
+  <exec_depend>python3-uvicorn</exec_depend>
+  
+  <!-- 关键：声明包的构建类型为ament_python，告诉colcon用setuptools编译而非CMake -->
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

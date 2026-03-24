@@ -1,0 +1,3 @@
+recursive-include sstg_map_manager *.py
+recursive-include config *.yaml
+recursive-include launch *.py
