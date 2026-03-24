@@ -1,0 +1,8 @@
+string text_input
+string context
+---
+bool success
+string query_json
+string intent
+float32 confidence
+string error_message

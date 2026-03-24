@@ -95,18 +95,25 @@
 
 ## 📋 待完成任务
 
-### ⏳ 阶段三：理解和规划（第5-6周）
+### ✅ 阶段三：理解和规划（第5-6周）
 
-#### 3.1 自然语言理解 [0%]
-- [ ] 创建 `sstg_nlp_interface` 包
-- [ ] 实现多模态输入处理
-  - 纯文本
-  - 纯音频
-  - 图片
-  - 混合模态
-- [ ] 集成 Qwen-Omni-Flash 模型
-- [ ] 意图识别与解析
-- [ ] 语义查询构建
+#### 3.1 自然语言理解 [100%]
+- [x] 创建 `sstg_nlp_interface` 包
+- [x] 实现多模态输入处理
+  - 纯文本处理 ✓
+  - 音频格式支持 ✓
+  - 图片格式支持 ✓
+  - 混合模态融合 ✓
+- [x] 集成 VLM 模型（Qwen-VL-Plus）
+- [x] 意图识别与解析
+  - navigate_to（导航）✓
+  - locate_object（物体定位）✓
+  - query_info（查询信息）✓
+  - ask_direction（询问方向）✓
+- [x] 语义查询构建
+- [x] 编译构建成功 ✓
+- [x] 完整功能测试通过 (14/14 tests) ✓
+- [x] 编写完整文档（MODULE_GUIDE.md + NLP_QuickRef.md）✓
 
 #### 3.2 导航规划 [0%]
 - [ ] 创建 `sstg_navigation_planner` 包
@@ -149,10 +156,10 @@
 
 | 包名 | 状态 | 功能描述 |
 |------|------|--------|
-| sstg_msgs | ✅ 完成 | 消息与服务定义（7个消息+6个服务） |
+| sstg_msgs | ✅ 完成 | 消息与服务定义（7个消息+7个服务） |
 | sstg_map_manager | ✅ 完成 | 拓扑图管理与可视化 |
 | sstg_perception | ✅ 完成 | 图像感知与VLM标注 |
-| sstg_nlp_interface | ⏳ 待开发 | 自然语言理解 |
+| sstg_nlp_interface | ✅ 完成 | 多模态自然语言理解 |
 | sstg_navigation_planner | ⏳ 待开发 | 导航规划 |
 | sstg_navigation_executor | ⏳ 待开发 | 导航执行 |
 | sstg_interaction_manager | ⏳ 待开发 | 交互管理 |

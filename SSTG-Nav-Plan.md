@@ -372,19 +372,29 @@ uvicorn>=0.23   # WebUI服务
 ## 四、开发顺序和里程碑
 
 ### 阶段一：基础设施（第1-2周）✅ COMPLETED
-- [x] 建立 `sstg_msgs` 包
+- [x] 建立 `sstg_msgs` 包（7个消息+7个服务）
 - [x] 建立 `sstg_map_manager` 包，完成数据结构和本地存储
 - [x] 完成相机话题订阅和基础图像采集
 
 ### 阶段二：感知能力（第3-4周）✅ COMPLETED
 - [x] 实现 `sstg_perception` 包，集成VLM API
+  - RGB-D 相机订阅和处理
+  - 四方向全景图采集
+  - VLM 语义标注
 - [x] 测试语义标注准确性
 - [x] 建立拓扑图的语义数据库
+- [x] Bug 修复（CaptureImage/AnnotateSemantic 服务）
 
-### 阶段三：理解和规划（第5-6周）⏳ IN PROGRESS
-- [ ] 实现 `sstg_nlp_interface` 包
-- [ ] 实现 `sstg_navigation_planner` 包
-- [ ] 测试自然语言指令理解
+### 阶段三：理解和规划（第5-6周）✅ COMPLETED (3.1部分)
+- [x] 实现 `sstg_nlp_interface` 包 (100%)
+  - TextProcessor：文本处理和意图识别 ✓
+  - MultimodalInputHandler：多模态输入处理 ✓
+  - VLMClient：VLM 集成和文本/图片理解 ✓
+  - QueryBuilder：语义查询构建 ✓
+  - NLPNode：ROS2 节点实现 ✓
+  - 完整文档和14个测试用例全部通过 ✓
+- [ ] 实现 `sstg_navigation_planner` 包 (0%)
+- [ ] 测试自然语言指令理解 (部分完成)
 
 ### 阶段四：执行和集成（第7-8周）⏳ PENDING
 - [ ] 实现 `sstg_navigation_executor` 包

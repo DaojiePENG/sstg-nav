@@ -22,6 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetNodePose.srv"
   "srv/CaptureImage.srv"
   "srv/AnnotateSemantic.srv"
+  "srv/ProcessNLPQuery.srv"
   DEPENDENCIES
     builtin_interfaces
     geometry_msgs
