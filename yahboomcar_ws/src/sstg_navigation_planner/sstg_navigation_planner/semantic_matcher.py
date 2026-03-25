@@ -42,7 +42,7 @@ class SemanticMatcher:
     
     # 意图到房间类型的映射
     INTENT_TO_ROOM_MAPPING = {
-        'navigate_to': ['room', 'location', 'area'],
+        'navigate_to': ['room', 'location', 'area', 'living_room', 'kitchen', 'bedroom', 'bathroom', 'study', 'dining_room'],
         'locate_object': ['room', 'furniture', 'equipment'],
         'query_info': ['room', 'context'],
         'ask_direction': ['room', 'location']

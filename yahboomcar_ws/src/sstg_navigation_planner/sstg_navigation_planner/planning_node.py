@@ -123,16 +123,41 @@ class PlanningNode(Node):
         处理导航规划请求
         """
         try:
+            self.get_logger().info(f"[Planning] Received planning request: intent={request.intent}, entities='{request.entities}', confidence={request.confidence}")
+            
             # 获取拓扑图
             topological_nodes = self._get_topological_map()
             if not topological_nodes:
+                self.get_logger().info("[Planning] Using mock topological map")
                 topological_nodes = self._get_mock_topological_map()
+            
+            self.get_logger().info(f"[Planning] Topological nodes available: {len(topological_nodes)}")
             
             # 解析 NLP 查询
             intent = request.intent if hasattr(request, 'intent') else 'navigate_to'
-            entities = json.loads(request.entities) if hasattr(request, 'entities') else []
+            
+            # 解析实体 - 从SemanticQuery JSON中提取
+            entities = []
+            if hasattr(request, 'entities') and request.entities:
+                try:
+                    query_data = json.loads(request.entities)
+                    if isinstance(query_data, dict):
+                        # 如果是SemanticQuery格式，提取entities字段
+                        entities = query_data.get('entities', [])
+                        # 如果entities为空，尝试从target_locations提取
+                        if not entities and query_data.get('target_locations'):
+                            entities = query_data.get('target_locations', [])
+                    elif isinstance(query_data, list):
+                        # 如果直接是实体列表
+                        entities = query_data
+                except json.JSONDecodeError:
+                    # 如果不是JSON，当作单个实体处理
+                    entities = [request.entities] if request.entities else []
+            
             confidence = request.confidence if hasattr(request, 'confidence') else 0.9
             current_node = request.current_node if hasattr(request, 'current_node') else -1
+            
+            self.get_logger().info(f"[Planning] Parsed: intent={intent}, entities={entities}, confidence={confidence}")
             
             # 执行语义匹配
             matches = self.semantic_matcher.match_query_to_nodes(
@@ -142,8 +167,14 @@ class PlanningNode(Node):
                 topological_nodes=topological_nodes
             )
             
+            self.get_logger().info(f"[Planning] Intent: {intent}, Entities: {entities}, Topological nodes: {len(topological_nodes)}")
+            
             # 过滤低得分的匹配
             matches = [m for m in matches if m.match_score >= self.min_match_score]
+            
+            self.get_logger().info(f"[Planning] After filtering (min_score={self.min_match_score}): {len(matches)} matches")
+            for match in matches[:3]:  # Log first 3 matches
+                self.get_logger().info(f"[Planning] Match: Node {match.node_id} ({match.room_type}) - score: {match.match_score}")
             
             # 生成候选点
             candidates = self.candidate_generator.generate_candidates(
@@ -151,12 +182,18 @@ class PlanningNode(Node):
                 topological_nodes=topological_nodes
             )
             
+            self.get_logger().info(f"[Planning] Generated {len(candidates)} candidates")
+            for candidate in candidates[:3]:  # Log first 3 candidates
+                self.get_logger().info(f"[Planning] Candidate: Node {candidate.node_id} ({candidate.room_type}) - relevance: {candidate.relevance_score:.3f}")
+            
             # 规划导航
             plan = self.navigation_planner.plan_navigation(
                 candidates=candidates,
                 topological_nodes=topological_nodes,
                 current_node_id=current_node if current_node > 0 else None
             )
+            
+            self.get_logger().info(f"[Planning] Navigation plan: success={plan.success}, path={plan.path}, reasoning='{plan.reasoning}'")
             
             # 填充响应
             response.success = plan.success

@@ -22,7 +22,7 @@ setup(
     zip_safe=True,
     maintainer='daojie',
     maintainer_email='Daojie.PENG@qq.com',
-    description='TODO: Package description',
+    description='Topological Map Manager for SSTG Navigation System',
     license='Apache-2.0',
     extras_require={
         'test': [

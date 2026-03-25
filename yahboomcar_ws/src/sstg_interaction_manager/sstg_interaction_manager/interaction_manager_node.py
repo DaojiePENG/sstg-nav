@@ -67,7 +67,27 @@ class InteractionManagerNode(Node):
             callback_group=self.callback_group
         )
 
+        # 等待所有依赖服务就绪
+        self.get_logger().info('Waiting for dependent services...')
+        self._wait_for_services()
+        
         self.get_logger().info('sstg_interaction_manager initialized')
+
+    def _wait_for_services(self):
+        """等待所有依赖服务就绪"""
+        services_to_wait = [
+            ('process_nlp_query', self.nlp_client),
+            ('plan_navigation', self.plan_client),
+            ('get_node_pose', self.get_pose_client),
+            ('execute_navigation', self.exec_client)
+        ]
+        
+        for service_name, client in services_to_wait:
+            self.get_logger().info(f'Waiting for {service_name} service...')
+            if not client.wait_for_service(timeout_sec=10.0):
+                self.get_logger().warn(f'Service {service_name} not available after 10s, continuing anyway')
+            else:
+                self.get_logger().info(f'✓ Service {service_name} is ready')
 
     def start_task_callback(self, request, response):
         if self.task_state not in [TaskState.IDLE, TaskState.COMPLETED, TaskState.FAILED, TaskState.CANCELED]:

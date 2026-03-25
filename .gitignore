@@ -2,6 +2,7 @@
 build/
 install/
 log/
+logs/
 .claude/
 __pycache__/
 *.log
