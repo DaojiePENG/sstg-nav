@@ -407,10 +407,23 @@ uvicorn>=0.23   # WebUI服务
   - 版本：0.1.0
 - [x] 测试自然语言指令理解和规划 (完成)
 
-### 阶段四：执行和集成（第7-8周）⏳ PENDING
-- [ ] 实现 `sstg_navigation_executor` 包
+### 阶段四：执行和集成（第7-8周）🔄 DEVELOPING
+- [x] 实现 `sstg_navigation_executor` 包
+  - 设计并完成 `executor_node`：订阅 `/amcl_pose`、发布 `navigation_feedback`、调用 Nav2 `navigate_to_pose`
+  - 设计并完成 `Nav2Client` 封装：支持发送目标、取消目标、导航状态查询、结果回调
+  - 完成 `navigation_monitor`：实时距离、进度计算、到达判断
+  - 完成 `feedback_handler`：状态机处理（starting -> in_progress -> reached/failed）
+  - 编写单元测试：目标发送、取消、失败回调和可达性判断
 - [ ] 实现 `sstg_interaction_manager` 包
+  - 设计任务状态机：`idle -> understanding -> planning -> navigating -> checking -> completed/failed`
+  - 连接多个模块：`tts/nlu` -> `planner` -> `executor` -> `perception` -> `user_feedback`
+  - 实现异常恢复策略：导航失败后重试/询问用户是否切换目标/更新拓扑
+  - 实现任务调度服务：`start_task`, `cancel_task`, `query_task_status`
 - [ ] 系统集成测试
+  - 一体化流程测试用例：输入“去客厅沙发”，全链路从 NLP -> 规划 -> 执行 -> 采集 -> 结果反馈
+  - 干扰测试：正在导航时追加新目标（取消前一目标并切换），网络延迟/Nav2失败场景
+  - 性能指标：从指令到导航起始平均延迟 ≤ 500ms，路径执行成功率 ≥ 90%
+  - 记录问题并修复：失效服务、未处理异常、状态不一致等
 
 ### 阶段五：优化和部署（第9-10周）⏳ PENDING
 - [ ] 性能优化
