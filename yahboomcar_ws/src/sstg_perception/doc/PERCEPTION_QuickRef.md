@@ -3,24 +3,38 @@
 ## ⚡ 一句话启动
 
 ```bash
+cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
-ros2 launch sstg_perception perception.launch.py
+ros2 run sstg_perception perception_node
 ```
 
 ---
 
 ## 🔧 常用命令
 
-### 启动相机和感知节点
+### 启动 Perception 节点（推荐）
 ```bash
-source /opt/ros/humble/setup.bash
+# 方法 1: 前台运行（可查看日志）
+cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+source install/setup.bash
+export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
+ros2 run sstg_perception perception_node
+
+# 方法 2: 后台运行
+ros2 run sstg_perception perception_node > /tmp/perception_node.log 2>&1 &
+# 查看日志: tail -f /tmp/perception_node.log
+```
+
+### 使用 Launch 文件启动（包含相机）
+```bash
+source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 launch sstg_perception perception.launch.py
 ```
 
-### 仅启动相机（不启动感知）
+### 仅启动相机（用于测试）
 ```bash
-source /opt/ros/humble/setup.bash
 ros2 launch orbbec_camera gemini_330_series.launch.py
 ```
 
@@ -51,16 +65,44 @@ colcon build --symlink-install --packages-select sstg_perception
 
 ## 📡 ROS2 服务调用
 
-### 采集全景图
+**前置条件**：必须先启动 perception_node！
+
 ```bash
-ros2 service call /perception_node/capture_panorama sstg_msgs/CaptureImage \
+# 检查节点是否运行
+ros2 node list | grep perception_node
+
+# 检查服务是否可用
+ros2 service list | grep -E "(annotate|capture)"
+```
+
+### 语义标注（推荐先测试此服务）
+```bash
+# 正确的服务名称是 /annotate_semantic (不是 /perception_node/annotate_semantic)
+ros2 service call /annotate_semantic sstg_msgs/srv/AnnotateSemantic \
+  "{image_path: '/home/daojie/Pictures/kitchen.png', node_id: 0}"
+```
+
+**成功响应示例**：
+```
+success: True
+room_type: '餐厅'
+confidence: 0.95
+objects: [餐桌, 餐椅, 花瓶, ...]
+description: '这是一个现代风格的餐厅...'
+```
+
+### 全景图采集
+```bash
+# 正确的服务名称是 /capture_panorama
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
   "{node_id: 0, pose: {position: {x: 1.0, y: 2.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
 
-### 语义标注
-```bash
-ros2 service call /perception_node/annotate_semantic sstg_msgs/AnnotateSemantic \
-  "{image_path: '/tmp/image.jpg', node_id: 0}"
+**成功响应示例**：
+```
+success: True
+image_paths: '{"0": "/tmp/sstg_perception/node_0/000deg_rgb.png", "90": "...", ...}'
+error_message: ''
 ```
 
 ### 订阅标注结果
@@ -72,17 +114,48 @@ ros2 topic echo /semantic_annotations
 
 ## 🐍 Python API 快速示例
 
+### 使用相机订阅器（获取 RGB-D 图像）
+```python
+import rclpy
+from sstg_perception.camera_subscriber import CameraSubscriber
+
+# ✓ 关键：必须先初始化 ROS2
+rclpy.init()
+
+try:
+    # 创建相机订阅器
+    camera = CameraSubscriber(
+        rgb_topic='/camera/color/image_raw',
+        depth_topic='/camera/depth/image_raw'
+    )
+
+    # 等待图像（会自动处理消息）
+    if camera.wait_for_images(timeout=5):
+        rgb, depth = camera.get_latest_pair()
+        print(f"RGB: {rgb.shape}, Depth: {depth.shape}")
+finally:
+    # ✓ 关键：清理资源
+    camera.destroy_node()
+    rclpy.shutdown()
+```
+
 ### 创建全景图
 ```python
 from sstg_perception.panorama_capture import PanoramaCapture
 import cv2
 
 capture = PanoramaCapture(storage_path='/tmp/sstg_perception')
-image = cv2.imread('image.jpg')
+rgb_image = cv2.imread('image.jpg')
+depth_image = cv2.imread('depth.png', cv2.IMREAD_UNCHANGED)
 
-for i in range(4):
-    result = capture.capture_panorama(image, node_id=0, pose={'x': 0, 'y': 0, 'theta': 0})
-    print(f"Captured: {result['angle']}°")
+# 采集单个方向
+result = capture.capture_panorama(
+    rgb_image,
+    depth_image,
+    node_id=0,
+    pose={'x': 1.0, 'y': 2.0, 'theta': 0.0}
+)
+print(f"Saved: {result['rgb_path']}")
 ```
 
 ### 提取语义信息
@@ -121,24 +194,29 @@ print(response.content)
 
 ```
 sstg_perception/
-├── sstg_perception/           # 核心模块
+├── sstg_perception/              # 核心模块
 │   ├── __init__.py
-│   ├── camera_subscriber.py   # 相机订阅器
-│   ├── panorama_capture.py    # 全景图采集
-│   ├── vlm_client.py          # VLM 客户端
-│   ├── semantic_extractor.py  # 语义提取
-│   └── perception_node.py     # ROS2 节点
-├── launch/                     # 启动文件
-│   └── perception.launch.py   # 集成相机和感知
-├── config/                     # 配置文件
+│   ├── camera_subscriber.py      # 相机订阅器
+│   ├── panorama_capture.py       # 全景图采集
+│   ├── vlm_client.py             # VLM 客户端
+│   ├── semantic_extractor.py     # 语义提取
+│   └── perception_node.py        # ROS2 节点
+├── launch/                        # 启动文件
+│   └── perception.launch.py      # 集成相机和感知
+├── config/                        # 配置文件
 │   └── perception_config.yaml
-├── test/                       # 测试脚本
-│   └── test_perception.py
-├── doc/                        # 文档
-│   └── MODULE_GUIDE.md
-├── package.xml                # ROS2 包配置
-├── CMakeLists.txt             # CMake 配置
-├── setup.py                   # Python 包配置
+├── scripts/                       # 工具脚本
+│   └── test_perception_services.sh  # 服务测试脚本
+├── test/                          # 测试脚本
+│   ├── test_perception.py        # 单元测试
+│   └── test_camera_subscriber.py # 相机测试
+├── doc/                           # 文档
+│   ├── MODULE_GUIDE.md           # 详细指南
+│   ├── PERCEPTION_QuickRef.md    # 快速参考
+│   └── JUPYTER_USAGE.md          # Jupyter 使用
+├── package.xml                    # ROS2 包配置
+├── CMakeLists.txt                 # CMake 配置
+├── setup.py                       # Python 包配置
 └── setup.cfg
 ```
 
@@ -283,14 +361,57 @@ print(f"All objects: {len(merged.objects)}")
 
 | 问题 | 症状 | 解决方案 |
 |------|------|--------|
-| 相机不工作 | 无 RGB/深度话题 | 检查 USB 连接，运行 `lsusb` |
-| API Key 错误 | 401 错误 | 检查环境变量: `echo $DASHSCOPE_API_KEY` |
-| 超时 | 请求挂起 30s | 检查网络，增加 max_retries |
-| JSON 解析失败 | 无对象提取 | 检查 VLM 输出格式 |
-| 包找不到 | ImportError | 重新构建: `colcon build ...` |
+| 服务调用超时 | `waiting for service to become available...` | ① 检查节点是否运行: `ros2 node list` <br> ② 启动节点: `ros2 run sstg_perception perception_node` |
+| 服务名称错误 | 找不到服务 | 使用 `/annotate_semantic` (不是 `/perception_node/annotate_semantic`) |
+| 模块导入失败 | `ModuleNotFoundError` | ① 重新编译: `colcon build --packages-select sstg_perception` <br> ② Source 环境: `source install/setup.bash` |
+| 相机无图像 | `Timeout waiting for images` | ① 检查相机连接: `lsusb` <br> ② 检查话题: `ros2 topic list \| grep camera` <br> ③ 查看话题数据: `ros2 topic echo /camera/color/image_raw --once` |
+| API Key 错误 | 401 Unauthorized | 检查环境变量: `echo $DASHSCOPE_API_KEY` |
+| VLM 超时 | Request timeout | ① 检查网络连接 <br> ② 增加 timeout 参数 |
+| JSON 解析失败 | 无对象提取 | 检查 VLM 输出格式，调整提示词 |
+
+### 完整测试流程（推荐）
+
+```bash
+# 步骤 1: 编译（如果修改了代码）
+cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+colcon build --packages-select sstg_perception
+
+# 步骤 2: Source 环境
+source install/setup.bash
+export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
+
+# 步骤 3: 启动节点
+ros2 run sstg_perception perception_node &
+sleep 3
+
+# 步骤 4: 验证节点和服务
+ros2 node list | grep perception_node
+ros2 service list | grep -E "(annotate|capture)"
+
+# 步骤 5: 测试服务
+ros2 service call /annotate_semantic sstg_msgs/srv/AnnotateSemantic \
+  "{image_path: '/home/daojie/Pictures/kitchen.png', node_id: 0}"
+```
+
+### 快速测试脚本
+
+```bash
+# 运行一键测试脚本
+cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+bash scripts/test_perception_services.sh
+```
 
 ---
 
-**版本**: v0.1.0  
-**最后更新**: 2026-03-24  
+**版本**: v0.1.1
+**最后更新**: 2026-03-26
 **维护者**: SSTG-Nav Team
+
+**更新日志**:
+- v0.1.1 (2026-03-26):
+  - ✓ 修复 CameraSubscriber 消息处理问题
+  - ✓ 优化 QoS 配置
+  - ✓ 修正服务名称说明
+  - ✓ 添加完整测试脚本
+  - ✓ 完善文档和故障排查指南
+- v0.1.0 (2026-03-24): 初始版本
