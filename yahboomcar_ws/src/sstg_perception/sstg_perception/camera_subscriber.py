@@ -47,19 +47,26 @@ class CameraSubscriber(Node):
         self.lock = threading.Lock()
         self.callbacks = []
         
-        # 订阅相机话题
+        # 订阅相机话题 - 使用RELIABLE QoS以匹配相机发布者
+        qos_profile = rclpy.qos.QoSProfile(
+            reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
+            durability=rclpy.qos.DurabilityPolicy.VOLATILE,
+            history=rclpy.qos.HistoryPolicy.KEEP_LAST,
+            depth=10
+        )
+
         self.rgb_subscription = self.create_subscription(
             Image,
             rgb_topic,
             self._rgb_callback,
-            qos_profile=rclpy.qos.QoSProfile(depth=5)
+            qos_profile=qos_profile
         )
-        
+
         self.depth_subscription = self.create_subscription(
             Image,
             depth_topic,
             self._depth_callback,
-            qos_profile=rclpy.qos.QoSProfile(depth=5)
+            qos_profile=qos_profile
         )
         
         self.get_logger().info(
@@ -122,14 +129,33 @@ class CameraSubscriber(Node):
     def wait_for_images(self, timeout: float = 10.0) -> bool:
         """等待第一次接收图像"""
         import time
+
+        # 给节点一点时间建立订阅连接
+        self.get_logger().info('Waiting for subscriptions to establish...')
+        time.sleep(0.5)
+
         start_time = time.time()
+        check_count = 0
         while time.time() - start_time < timeout:
+            # 核心修复：处理 ROS2 消息，让回调被触发
+            rclpy.spin_once(self, timeout_sec=0.1)
+            check_count += 1
+
+            if check_count % 10 == 0:
+                rgb_ready = self.rgb_image is not None
+                depth_ready = self.depth_image is not None
+                self.get_logger().info(
+                    f'Checking... RGB: {rgb_ready}, Depth: {depth_ready}'
+                )
+
             if self.is_ready():
                 self.get_logger().info('Images received!')
                 return True
-            time.sleep(0.1)
-        
-        self.get_logger().warn(f'Timeout waiting for images after {timeout}s')
+
+        self.get_logger().warn(
+            f'Timeout waiting for images after {timeout}s. '
+            f'RGB: {self.rgb_image is not None}, Depth: {self.depth_image is not None}'
+        )
         return False
 
 

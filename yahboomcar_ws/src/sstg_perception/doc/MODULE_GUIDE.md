@@ -83,19 +83,33 @@ EOF
 RGB-D 相机订阅器
 
 ```python
+import rclpy
 from sstg_perception.camera_subscriber import CameraSubscriber
 
-# 初始化
+# ✓ 核心修复：必须先初始化 ROS2
+rclpy.init()
+
+# 创建订阅器
 camera = CameraSubscriber(
     rgb_topic='/camera/color/image_raw',
     depth_topic='/camera/depth/image_raw'
 )
 
-# 等待图像
+# 等待图像（会自动处理 ROS2 消息）
 if camera.wait_for_images(timeout=5):
     rgb, depth = camera.get_latest_pair()
     print(f"RGB shape: {rgb.shape}, Depth shape: {depth.shape}")
+
+# 清理
+camera.destroy_node()
+rclpy.shutdown()
 ```
+
+**关键要点**：
+1. ✓ 必须先调用 `rclpy.init()` 初始化 ROS2
+2. ✓ `wait_for_images()` 会自动调用 `spin_once()` 处理消息
+3. ✓ 使用完毕后调用 `destroy_node()` 和 `rclpy.shutdown()`
+4. ✓ QoS 配置已优化为 RELIABLE 模式以匹配相机发布者
 
 #### 2. PanoramaCapture
 全景图采集管理器
