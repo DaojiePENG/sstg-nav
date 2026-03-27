@@ -3,14 +3,69 @@
 ## 📋 概述
 
 SSTG Perception 模块负责：
+- **自主全景图采集**：导航到目标位姿并自动旋转采集四方向图像
 - RGB-D 图像采集（Gemini 336L 相机）
-- 四方向全景图采集
 - 调用阿里云百炼 VLM (qwen-vl-plus) 进行语义标注
 - 结构化语义信息提取和存储
+
+**核心特性**：
+- ✅ **一键采集**：给定目标位姿，自动完成导航、旋转、采集全流程
+- ✅ **Nav2集成**：使用Nav2进行自主导航和原地旋转
+- ✅ **智能重试**：自动处理导航失败和图像采集失败
+- ✅ **完整元数据**：保存位姿、时间戳、图像路径等信息
 
 ---
 
 ## 🚀 快速启动
+
+### 完整系统启动流程
+
+**步骤1: 启动相机**（终端1）
+```bash
+ros2 launch yahboomcar_nav camera_gemini_336l.launch.py
+```
+
+**步骤2: 启动雷达和导航**（终端2）
+```bash
+# 启动雷达
+ros2 launch yahboomcar_nav laser_bringup_launch.py
+```
+
+**步骤3: 启动可视化（可选）**（终端4）
+```bash
+ros2 launch yahboomcar_nav display_nav_launch.py
+```
+
+**步骤4: 启动导航模块**（终端3）
+```bash
+# 使用DWA导航
+ros2 launch yahboomcar_nav navigation_dwa_launch.py
+```
+
+
+**步骤5: 启动Perception节点**（终端5）
+```bash
+cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+source install/setup.bash
+export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
+ros2 run sstg_perception perception_node
+```
+
+### 验证系统就绪
+
+```bash
+# 检查所有关键节点
+ros2 node list | grep -E "(camera|amcl|bt_navigator|perception)"
+
+# 检查相机话题
+ros2 topic hz /camera/color/image_raw
+
+# 检查机器人定位
+ros2 topic echo /amcl_pose --once
+
+# 检查perception服务
+ros2 service list | grep capture_panorama
+```
 
 ### 前置条件
 
@@ -124,54 +179,129 @@ rclpy.shutdown()
 4. ✓ QoS 配置已优化为 RELIABLE 模式以匹配相机发布者
 
 #### 2. PanoramaCapture
-全景图采集管理器
+全景图采集管理器（**重新设计 v0.2.0**）
+
+**新架构设计**：集成Nav2导航，给定位姿即可自主完成采集
 
 ```python
+import rclpy
+from sstg_perception.camera_subscriber import CameraSubscriber
 from sstg_perception.panorama_capture import PanoramaCapture
 
-# 初始化
-capture = PanoramaCapture(storage_path='/tmp/sstg_perception')
+# 初始化ROS2
+rclpy.init()
 
-# 采集单个方向
-result = capture.capture_panorama(
-    rgb_image,
-    depth_image,
-    node_id=0,
-    pose={'x': 1.0, 'y': 2.0, 'theta': 0.0}
+# 创建相机订阅器
+camera = CameraSubscriber(
+    rgb_topic='/camera/color/image_raw',
+    depth_topic='/camera/depth/image_raw'
 )
 
-# 采集四个方向
-panorama_data = capture.capture_four_directions(
-    camera_subscriber,
-    node_id=0,
-    pose={'x': 1.0, 'y': 2.0, 'theta': 0.0},
-    rotation_callback=None,  # 可选的旋转回调
-    wait_after_rotation=1.5  # 旋转后等待时间（秒）
+# 等待相机就绪
+camera.wait_for_images(timeout=5)
+
+# 创建全景采集器（传入相机订阅器）
+capture = PanoramaCapture(
+    camera_subscriber=camera,
+    storage_path='/tmp/sstg_perception',
+    enable_navigation=True  # 启用自动导航（需要Nav2运行）
 )
 
-# 检查状态
-if capture.is_panorama_complete():
-    pano_data = capture.get_panorama_data()
-    print(pano_data['images'])
+# 🎯 一键采集：给定目标位姿，自动完成所有工作
+result = capture.capture_at_pose(
+    node_id=0,
+    pose={'x': 2.0, 'y': 1.5, 'theta': 0.0},
+    frame_id='map',
+    navigate=True,  # 自动导航到目标点
+    wait_after_rotation=2.0  # 旋转后等待时间
+)
+
+if result:
+    print(f"✅ Success! Images: {result['images']}")
+else:
+    print("❌ Failed")
+
+# 清理
+capture.shutdown()
+camera.destroy_node()
+rclpy.shutdown()
 ```
 
-**v0.1.2 改进**：
-- ✅ 添加相机就绪状态检查
-- ✅ 增强图像有效性验证（检查None和空图像）
-- ✅ 可配置的稳定等待时间 `wait_after_rotation`
-- ✅ 改进的日志输出和错误处理
-- ✅ 支持手动旋转模式
+**工作流程**：
+1. **导航阶段**：使用Nav2自动导航到目标位姿 (x, y, theta)
+2. **旋转采集**：原地旋转到4个方向（0°, 90°, 180°, 270°）
+3. **图像采集**：每个方向采集RGB + 深度图
+4. **保存数据**：自动保存图像和元数据
 
-**工作模式**：
-1. **手动模式** (rotation_callback=None)：
-   - 在每个方向前暂停，提示用户手动旋转机器人
-   - 适用于调试和测试
-   - 当前实现：连续采集4次当前视角图像
+**关键改进**：
+- ✅ **不再需要**手动传入camera_subscriber到每个方法
+- ✅ **不再需要**手动实现旋转回调
+- ✅ **不再需要**手动管理采集状态
+- ✅ **自动导航**到目标点（Nav2）
+- ✅ **自动旋转**到每个角度（Nav2）
+- ✅ **智能等待**相机稳定和图像更新
 
-2. **自动模式** (提供rotation_callback)：
-   - 通过回调函数自动控制机器人旋转
-   - 适用于完全自主采集
-   - 需要实现旋转控制接口
+**API参考**：
+
+```python
+# 主方法：在指定位姿采集全景图
+result = capture.capture_at_pose(
+    node_id: int,           # 拓扑节点ID
+    pose: Dict,             # {'x': float, 'y': float, 'theta': float}
+    frame_id: str = 'map',  # 坐标系
+    navigate: bool = True,  # 是否导航（False则原地采集）
+    wait_after_rotation: float = 2.0  # 旋转后等待时间（秒）
+) -> Optional[Dict]
+
+# 返回值（成功）
+{
+    'node_id': 0,
+    'pose': {'x': 2.0, 'y': 1.5, 'theta': 0.0},
+    'timestamp': '2026-03-27T15:30:45.123456',
+    'images': {
+        0: '/tmp/sstg_perception/node_0/000deg_rgb.png',
+        90: '/tmp/sstg_perception/node_0/090deg_rgb.png',
+        180: '/tmp/sstg_perception/node_0/180deg_rgb.png',
+        270: '/tmp/sstg_perception/node_0/270deg_rgb.png'
+    },
+    'complete': True
+}
+
+# 返回值（失败）
+None
+```
+
+**两种工作模式**：
+
+1. **自动模式**（推荐）：
+```python
+capture = PanoramaCapture(
+    camera_subscriber=camera,
+    enable_navigation=True  # Nav2必须运行
+)
+
+# 自动导航 + 自动旋转 + 自动采集
+result = capture.capture_at_pose(
+    node_id=0,
+    pose={'x': 2.0, 'y': 1.5, 'theta': 0.0},
+    navigate=True
+)
+```
+
+2. **手动模式**（调试用）：
+```python
+capture = PanoramaCapture(
+    camera_subscriber=camera,
+    enable_navigation=False  # 不使用Nav2
+)
+
+# 在当前位置连续采集4次（不旋转）
+result = capture.capture_at_pose(
+    node_id=0,
+    pose={'x': 0.0, 'y': 0.0, 'theta': 0.0},
+    navigate=False
+)
+```
 
 #### 3. VLMClient
 VLM API 客户端
@@ -310,46 +440,93 @@ error_message: ''
 
 ### 服务 2: capture_panorama（全景采集）
 
-**功能**：采集指定节点的四方向全景图（0°, 90°, 180°, 270°）
+**功能**：自动导航到目标位姿并采集四方向全景图（0°, 90°, 180°, 270°）
+
+**⭐ 新特性（v0.2.0）**：
+- ✅ **自动导航**：使用Nav2导航到目标位置
+- ✅ **自动旋转**：原地旋转到4个方向
+- ✅ **无需手动干预**：完全自主完成采集
 
 **调用示例**：
 ```bash
 ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
-  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 2.0, z: 0.0}, orientation: {w: 1.0}}}}"
+  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 2.0, y: 1.5, z: 0.0}, orientation: {w: 1.0}}}}"
 ```
 
 **请求参数**:
 - `node_id`: 拓扑节点 ID
 - `pose`: geometry_msgs/PoseStamped 类型
-  - `header.frame_id`: 坐标系（如 'map'）
-  - `pose.position`: {x, y, z}
-  - `pose.orientation`: {x, y, z, w} 四元数
+  - `header.frame_id`: 坐标系（'map' 或 'odom'）
+  - `pose.position`: {x, y, z} - 目标位置（米）
+  - `pose.orientation`: {x, y, z, w} - 目标朝向（四元数）
 
 **响应字段**:
 - `success`: 布尔值，是否成功
 - `image_paths`: 字符串数组，格式为 `["angle:path", ...]`
-  - 示例: `["0:/tmp/sstg_perception/node_0/000deg_rgb.png", ...]`
 - `error_message`: 错误信息（失败时）
 
-**成功响应示例**：
-```yaml
-success: true
-image_paths:
-  - '0:/tmp/sstg_perception/node_0/000deg_rgb.png'
-  - '90:/tmp/sstg_perception/node_0/090deg_rgb.png'
-  - '180:/tmp/sstg_perception/node_0/180deg_rgb.png'
-  - '270:/tmp/sstg_perception/node_0/270deg_rgb.png'
-error_message: ''
+**成功示例**：
+```bash
+# 导航到 (2.0, 1.5)，朝向0度
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 1, pose: {header: {frame_id: 'map'}, pose: {position: {x: 2.0, y: 1.5, z: 0.0}, orientation: {w: 1.0}}}}"
+
+# 预期输出：
+response:
+  success: true
+  image_paths:
+    - '0:/tmp/sstg_perception/node_1/000deg_rgb.png'
+    - '90:/tmp/sstg_perception/node_1/090deg_rgb.png'
+    - '180:/tmp/sstg_perception/node_1/180deg_rgb.png'
+    - '270:/tmp/sstg_perception/node_1/270deg_rgb.png'
+  error_message: ''
 ```
 
-**⚠️ 重要说明**：
-- 当前版本在**手动模式**下运行（无自动旋转）
-- 服务会连续采集4次图像，但不会控制机器人旋转
-- 要采集真正的全景图，需要：
-  1. 调用服务前手动旋转机器人到不同角度，或
-  2. 实现并提供 `rotation_callback` 函数实现自动旋转
-- 每次采集间隔约0.5秒
-- 同时保存RGB和深度图像
+**完整工作流程**：
+```
+1. 收到服务请求
+   ↓
+2. 🚗 Nav2导航到目标位置 (x, y)
+   ├─ 避障
+   ├─ 路径规划
+   └─ 到达目标
+   ↓
+3. 🔄 逐个旋转到4个方向
+   ├─ 0° → 拍照
+   ├─ 90° → 拍照
+   ├─ 180° → 拍照
+   └─ 270° → 拍照
+   ↓
+4. 💾 保存图像和元数据
+   └─ 返回成功响应
+```
+
+**四元数朝向参考**：
+```bash
+# 0度（正东）
+orientation: {x: 0, y: 0, z: 0, w: 1}
+
+# 90度（正北）
+orientation: {x: 0, y: 0, z: 0.707, w: 0.707}
+
+# 180度（正西）
+orientation: {x: 0, y: 0, z: 1, w: 0}
+
+# 270度（正南）
+orientation: {x: 0, y: 0, z: -0.707, w: 0.707}
+```
+
+**前置条件**：
+- ✅ 相机节点运行
+- ✅ Nav2导航栈运行
+- ✅ 机器人已定位（AMCL）
+- ✅ 地图已加载
+
+**故障处理**：
+- 导航失败 → 返回错误 "Navigation failed"
+- 旋转失败 → 返回错误 "Rotation to X° failed"
+- 相机无响应 → 返回错误 "Camera not responding"
+- 图像无效 → 返回错误 "Invalid RGB image"
 
 ### 话题: semantic_annotations
 
@@ -455,6 +632,93 @@ enable_gyro: true     # 陀螺仪
 
 ## 🧪 测试
 
+### 完整测试流程
+
+**步骤1: 启动所有必需服务**（按顺序）
+
+```bash
+# 终端1: 相机
+ros2 launch yahboomcar_nav camera_gemini_336l.launch.py
+
+# 终端2: 雷达
+ros2 launch yahboomcar_nav laser_bringup_launch.py
+
+# 终端3: 导航
+ros2 launch yahboomcar_nav navigation_dwa_launch.py
+
+# 终端4: 可视化（可选，用于监控）
+ros2 launch yahboomcar_nav display_nav_launch.py
+
+# 终端5: Perception节点
+cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+source install/setup.bash
+export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
+ros2 run sstg_perception perception_node
+```
+
+**步骤2: 验证系统就绪**
+
+```bash
+# 检查所有关键节点运行
+ros2 node list | grep -E "(camera|amcl|bt_navigator|perception)"
+# 应该看到:
+#   /camera/camera
+#   /amcl
+#   /bt_navigator
+#   /perception_node
+
+# 检查相机有数据
+ros2 topic hz /camera/color/image_raw
+# 应该显示 ~30Hz
+
+# 检查机器人已定位
+ros2 topic echo /amcl_pose --once
+# 应该有位姿输出
+
+# 检查perception服务可用
+ros2 service list | grep capture_panorama
+# 应该显示: /capture_panorama
+```
+
+**步骤3: 测试全景采集**
+
+```bash
+# 测试1: 在当前位置附近采集（近距离）
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 0.5, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}"
+
+# 等待完成（大约1-2分钟）
+# 在RViz中应该看到机器人导航到目标点并旋转
+
+# 测试2: 远距离导航测试
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 1, pose: {header: {frame_id: 'map'}, pose: {position: {x: 2.0, y: 1.5, z: 0.0}, orientation: {w: 1.0}}}}"
+```
+
+**步骤4: 验证结果**
+
+```bash
+# 查看保存的图像
+ls -lh /tmp/sstg_perception/node_0/
+# 应该看到:
+#   000deg_rgb.png (约800KB)
+#   000deg_depth.png (约400KB)
+#   090deg_rgb.png
+#   090deg_depth.png
+#   180deg_rgb.png
+#   180deg_depth.png
+#   270deg_rgb.png
+#   270deg_depth.png
+#   panorama_metadata.json
+
+# 查看元数据
+cat /tmp/sstg_perception/node_0/panorama_metadata.json
+
+# 验证图像完整性
+file /tmp/sstg_perception/node_0/*.png
+# 应该都显示为 PNG image data, 1280 x 800
+```
+
 ### 快速测试（推荐）
 
 使用一键测试脚本：
@@ -522,20 +786,29 @@ ros2 service call /annotate_semantic sstg_msgs/srv/AnnotateSemantic \
   "{image_path: '$TEST_IMAGE', node_id: 0}"
 ```
 
-**测试全景采集**（需要相机）：
+**测试全景采集**（需要相机和Nav2）：
 ```bash
-# 确保相机已启动
+# 1. 确保相机已启动
 ros2 topic list | grep camera
 
-# 调用服务（注意：使用正确的PoseStamped格式）
+# 2. 确保Nav2已启动并且机器人已定位
+ros2 topic echo /amcl_pose --once
+
+# 3. 调用服务：导航到目标点并采集
 ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
-  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 2.0, z: 0.0}, orientation: {w: 1.0}}}}"
+  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 1.0, z: 0.0}, orientation: {w: 1.0}}}}"
 
-# 验证保存的图像
+# 4. 查看采集进度（perception_node日志）
+# 应该看到：
+#   🚗 Navigating to target pose...
+#   🔄 Rotating to 0°...
+#   📸 Capturing...
+#   ✓ Captured: 000deg_rgb.png
+#   ... (重复4次)
+#   ✅ Panorama capture complete!
+
+# 5. 验证保存的图像
 ls -lh /tmp/sstg_perception/node_0/
-# 应该看到: 000deg_rgb.png, 000deg_depth.png, 090deg_rgb.png, 等等
-
-# 查看元数据
 cat /tmp/sstg_perception/node_0/panorama_metadata.json
 ```
 
@@ -552,16 +825,20 @@ node = Node('test_client')
 client = node.create_client(CaptureImage, '/capture_panorama')
 
 if client.wait_for_service(timeout_sec=5.0):
+    # 创建请求
     request = CaptureImage.Request()
     request.node_id = 0
     request.pose = PoseStamped()
-    request.pose.pose.position.x = 1.0
-    request.pose.pose.position.y = 2.0
-    request.pose.pose.orientation.w = 1.0
     request.pose.header.frame_id = 'map'
+    request.pose.pose.position.x = 2.0
+    request.pose.pose.position.y = 1.5
+    request.pose.pose.orientation.w = 1.0
 
+    print('📍 Requesting panorama at (2.0, 1.5)')
+
+    # 异步调用（可能需要较长时间）
     future = client.call_async(request)
-    rclpy.spin_until_future_complete(node, future, timeout_sec=30.0)
+    rclpy.spin_until_future_complete(node, future, timeout_sec=120.0)  # 2分钟超时
 
     if future.done():
         response = future.result()
@@ -569,9 +846,11 @@ if client.wait_for_service(timeout_sec=5.0):
             print('✅ Success!')
             for img_path in response.image_paths:
                 angle, path = img_path.split(':', 1)
-                print(f'  {angle}°: {path}')
+                print(f'  {angle:>3}°: {path}')
         else:
-            print(f'✗ Failed: {response.error_message}')
+            print(f'❌ Failed: {response.error_message}')
+    else:
+        print('⏱️  Timeout')
 
 node.destroy_node()
 rclpy.shutdown()
@@ -769,6 +1048,21 @@ bash scripts/test_perception_services.sh
 ---
 
 ## 📝 更新历史
+
+- **v0.2.0** (2026-03-27): 🎯 **架构重构 - 自主导航采集**
+  - 🚀 **重大改进**：PanoramaCapture完全重新设计
+  - ✓ 集成Nav2导航：自动导航到目标位姿
+  - ✓ 自动旋转控制：原地旋转到4个方向（0°/90°/180°/270°）
+  - ✓ 一键采集：`capture_at_pose()` 完成所有工作
+  - ✓ 智能等待：旋转后自动等待图像稳定
+  - ✓ 改进的错误处理和日志输出
+  - ✓ 支持两种模式：自动模式（Nav2）和手动模式（调试）
+  - ✓ 更新perception_node服务接口
+  - ✓ 完善文档和使用示例
+  - **突破性变更**：
+    - `capture_four_directions()` 已废弃
+    - 新API：`capture_at_pose(node_id, pose, frame_id, navigate)`
+    - 构造函数需要传入 `camera_subscriber`
 
 - **v0.1.2** (2026-03-27): 全景采集管理器调试和功能增强
   - ✓ 修复 PoseStamped 访问错误（pose.pose.position 而非 pose.position）

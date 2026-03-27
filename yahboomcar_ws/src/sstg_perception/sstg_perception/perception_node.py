@@ -69,9 +69,11 @@ class PerceptionNode(Node):
             depth_topic=self.depth_topic
         )
         
-        # 初始化全景图采集器
+        # 初始化全景图采集器（传入相机订阅器）
         self.panorama_capture = PanoramaCapture(
-            storage_path=self.panorama_storage_path
+            camera_subscriber=self.camera_subscriber,
+            storage_path=self.panorama_storage_path,
+            enable_navigation=True  # 启用自动导航
         )
         self.panorama_capture.set_logger(self.get_logger().info)
         
@@ -116,55 +118,74 @@ class PerceptionNode(Node):
     def _capture_panorama_callback(self, request, response):
         """
         全景图采集服务回调
-        
-        参数: node_id, pose (x, y, theta)
+
+        自动完成：导航到目标位姿 → 旋转采集四个方向 → 返回结果
         """
         try:
             node_id = request.node_id
+
+            # 解析位姿
+            pose_stamped = request.pose
             pose = {
-                'x': float(request.pose.pose.position.x),
-                'y': float(request.pose.pose.position.y),
-                'theta': 0.0
+                'x': float(pose_stamped.pose.position.x),
+                'y': float(pose_stamped.pose.position.y),
+                'theta': self._quaternion_to_yaw(pose_stamped.pose.orientation)
             }
-            
-            self.get_logger().info(f'Capturing panorama for node {node_id}')
-            
-            # 检查相机是否就绪
+            frame_id = pose_stamped.header.frame_id or 'map'
+
+            self.get_logger().info(
+                f'📸 Panorama capture request: node={node_id}, '
+                f'pose=({pose["x"]:.2f}, {pose["y"]:.2f}, {pose["theta"]:.1f}°)'
+            )
+
+            # 检查相机就绪
             if not self.camera_subscriber.is_ready():
+                self.get_logger().warn('Camera not ready, waiting...')
                 if not self.camera_subscriber.wait_for_images(timeout=5.0):
                     response.success = False
                     response.error_message = 'Camera not responding'
                     return response
-            
-            # 采集四个方向的图像
-            panorama_data = self.panorama_capture.capture_four_directions(
-                self.camera_subscriber,
-                node_id,
-                pose,
-                rotation_callback=None  # 暂不支持自动旋转
+
+            # 调用新的采集方法（自动导航+旋转+采集）
+            panorama_data = self.panorama_capture.capture_at_pose(
+                node_id=node_id,
+                pose=pose,
+                frame_id=frame_id,
+                navigate=True,  # 启用导航
+                wait_after_rotation=2.0
             )
-            
+
             if panorama_data is None:
                 response.success = False
-                response.error_message = 'Failed to capture panorama'
+                response.error_message = 'Panorama capture failed'
                 return response
-            
-            # 保存元数据
-            self.panorama_capture.save_metadata(panorama_data)
 
+            # 构造响应
             response.success = True
-            # 将图像路径字典转换为列表，格式: "angle:/path"
             images_dict = panorama_data['images']
-            response.image_paths = [f"{angle}:{path}" for angle, path in sorted(images_dict.items())]
+            response.image_paths = [
+                f"{angle}:{path}" for angle, path in sorted(images_dict.items())
+            ]
 
-            self.get_logger().info(f'✓ Panorama captured: {len(images_dict)} images')
-            
+            self.get_logger().info(f'✅ Panorama captured successfully: {len(images_dict)} images')
+
         except Exception as e:
             response.success = False
             response.error_message = str(e)
-            self.get_logger().error(f'Capture error: {e}')
-        
+            self.get_logger().error(f'❌ Capture error: {e}')
+            import traceback
+            self.get_logger().error(traceback.format_exc())
+
         return response
+
+    def _quaternion_to_yaw(self, q) -> float:
+        """将四元数转换为yaw角度（度）"""
+        import math
+        # yaw = atan2(2*(w*z + x*y), 1 - 2*(y^2 + z^2))
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        yaw_rad = math.atan2(siny_cosp, cosy_cosp)
+        return math.degrees(yaw_rad)
     
     def _annotate_semantic_callback(self, request, response):
         """
@@ -267,7 +288,10 @@ class PerceptionNode(Node):
     
     def destroy_node(self):
         """清理资源"""
-        self.camera_subscriber.destroy_node()
+        if self.panorama_capture:
+            self.panorama_capture.shutdown()
+        if self.camera_subscriber:
+            self.camera_subscriber.destroy_node()
         super().destroy_node()
 
 

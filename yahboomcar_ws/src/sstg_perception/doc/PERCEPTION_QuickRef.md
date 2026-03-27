@@ -1,12 +1,70 @@
-# SSTG Perception Module - 快速参考卡
+# SSTG Perception Module - 快速参考卡 v0.2.0
 
-## ⚡ 一句话启动
+## ⚡ 完整系统启动
 
 ```bash
+# 终端1: 启动相机
+ros2 launch yahboomcar_nav camera_gemini_336l.launch.py
+
+# 终端2: 启动雷达
+ros2 launch yahboomcar_nav laser_bringup_launch.py
+
+# 终端3: 启动导航（DWA）
+ros2 launch yahboomcar_nav navigation_dwa_launch.py
+
+# 终端4: 启动可视化（可选）
+ros2 launch yahboomcar_nav display_nav_launch.py
+
+# 终端5: 启动perception节点
 cd ~/yahboomcar_ros2_ws/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node
+```
+
+## ✅ 验证系统就绪
+
+```bash
+# 检查关键节点
+ros2 node list | grep -E "(camera|amcl|bt_navigator|perception)"
+
+# 检查相机（应该有数据）
+ros2 topic hz /camera/color/image_raw
+
+# 检查定位（机器人已定位）
+ros2 topic echo /amcl_pose --once
+
+# 检查服务
+ros2 service list | grep capture_panorama
+```
+
+---
+
+## 🎯 核心功能
+
+**自动导航并采集全景图**：给定目标位姿 → 自动导航 → 自动旋转4个方向 → 采集RGB-D图像
+
+---
+
+## 🔧 快速测试
+
+### 1. 准备工作
+```bash
+# 确保相机运行
+ros2 topic hz /camera/color/image_raw
+
+# 确保Nav2运行且机器人已定位
+ros2 topic echo /amcl_pose --once
+```
+
+### 2. 调用采集服务
+```bash
+# 导航到(2.0, 1.5)并自动采集
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 2.0, y: 1.5, z: 0.0}, orientation: {w: 1.0}}}}"
+
+# 查看结果
+ls -lh /tmp/sstg_perception/node_0/
 ```
 
 ---
@@ -65,37 +123,55 @@ colcon build --symlink-install --packages-select sstg_perception
 
 ## 📡 ROS2 服务调用
 
-**前置条件**：必须先启动 perception_node！
+### 全景图采集（主要功能）
 
+**前置条件**：
+- ✅ perception_node运行
+- ✅ 相机运行
+- ✅ Nav2运行且机器人已定位
+
+**调用示例**：
 ```bash
-# 检查节点是否运行
-ros2 node list | grep perception_node
+# 基本调用：导航到原点并采集
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 0, pose: {header: {frame_id: 'map'}, pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}"
 
-# 检查服务是否可用
-ros2 service list | grep -E "(annotate|capture)"
+# 导航到指定位置
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 1, pose: {header: {frame_id: 'map'}, pose: {position: {x: 2.5, y: 1.3, z: 0.0}, orientation: {w: 1.0}}}}"
+
+# 带初始朝向（90度）
+ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
+  "{node_id: 2, pose: {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 1.0, z: 0.0}, orientation: {z: 0.707, w: 0.707}}}}"
 ```
 
-### 语义标注（推荐先测试此服务）
+**响应格式**：
+```yaml
+success: true
+image_paths:
+  - '0:/tmp/sstg_perception/node_0/000deg_rgb.png'
+  - '90:/tmp/sstg_perception/node_0/090deg_rgb.png'
+  - '180:/tmp/sstg_perception/node_0/180deg_rgb.png'
+  - '270:/tmp/sstg_perception/node_0/270deg_rgb.png'
+error_message: ''
+```
+
+**工作流程**：
+```
+1. 🚗 Nav2导航到目标位置 (x, y)
+2. 🔄 旋转到0°并拍照
+3. 🔄 旋转到90°并拍照
+4. 🔄 旋转到180°并拍照
+5. 🔄 旋转到270°并拍照
+6. 💾 保存图像和元数据
+7. ✅ 返回成功
+```
+
+### 语义标注（辅助功能）
+
 ```bash
-# 正确的服务名称是 /annotate_semantic (不是 /perception_node/annotate_semantic)
 ros2 service call /annotate_semantic sstg_msgs/srv/AnnotateSemantic \
   "{image_path: '/home/daojie/Pictures/kitchen.png', node_id: 0}"
-```
-
-**成功响应示例**：
-```
-success: True
-room_type: '餐厅'
-confidence: 0.95
-objects: [餐桌, 餐椅, 花瓶, ...]
-description: '这是一个现代风格的餐厅...'
-```
-
-### 全景图采集
-```bash
-# 正确的服务名称是 /capture_panorama
-ros2 service call /capture_panorama sstg_msgs/srv/CaptureImage \
-  "{node_id: 0, pose: {position: {x: 1.0, y: 2.0, z: 0.0}, orientation: {w: 1.0}}}"
 ```
 
 **成功响应示例**：
