@@ -21,36 +21,167 @@ SSTG导航系统是一个基于ROS2的智能机器人导航框架，集成了自
 
 ## 📦 系统架构
 
+### 整体数据流
+
+```mermaid
+graph TB
+    User["👤 User Input<br/>(Text/Image)"]
+    
+    subgraph Core["核心处理管道"]
+        IM["🔄 Interaction Manager<br/>任务编排"]
+        NLP["🧠 NLP Interface<br/>意图识别 + VLM"]
+        Planner["📍 Navigation Planner<br/>语义规划"]
+        Executor["⚡ Navigation Executor<br/>导航执行"]
+    end
+    
+    subgraph Data["数据层"]
+        MapMgr["🗺️ Map Manager<br/>拓扑地图"]
+        Perception["👁️ Perception<br/>语义感知"]
+    end
+    
+    subgraph Physical["物理控制"]
+        Nav2["🤖 Nav2<br/>导航栈"]
+    end
+    
+    User -->|自然语言/图像| IM
+    IM -->|1.处理意图| NLP
+    NLP -->|查询| MapMgr
+    NLP -->|2.返回意图| IM
+    IM -->|3.规划| Planner
+    Planner -->|查询地图| MapMgr
+    Planner -->|4.生成路径| IM
+    IM -->|5.执行导航| Executor
+    Executor -->|获取目标点| MapMgr
+    Executor -->|发送Goal| Nav2
+    Nav2 -->|状态反馈| Executor
+    Executor -->|进度更新| IM
+    Perception -->|语义标注| MapMgr
+    
+    style User fill:#e1f5ff
+    style Core fill:#f3e5f5
+    style Data fill:#e8f5e9
+    style Physical fill:#fff3e0
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  User Input     │    │  Interaction    │    │  Navigation     │
-│  (Text/Image)   │───▶│  Manager        │───▶│  Executor       │
-│                 │    │                 │    │  (Nav2)         │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │                        │
-                                ▼                        ▼
-                       ┌─────────────────┐    ┌─────────────────┐
-                       │  NLP Interface  │    │  Map Manager    │
-                       │  (VLM + NLU)    │    │  (Topological)  │
-                       └─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │  Navigation     │
-                       │  Planner        │
-                       │  (Semantic)     │
-                       └─────────────────┘
+
+### 模块职责说明
+
+| 模块 | 职责 | 输入 | 输出 |
+|------|------|------|------|
+| **Interaction Manager** | 任务协调、状态管理 | 用户命令 | 任务状态、反馈 |
+| **NLP Interface** | 自然语言理解、意图识别 | 文本/图像 | 结构化意图 |
+| **Navigation Planner** | 语义路由规划、候选点生成 | 意图、地图 | 导航路径 |
+| **Map Manager** | 地图存储、语义查询、节点管理 | 查询请求 | 节点信息、拓扑图 |
+| **Navigation Executor** | 导航执行、进度监控、反馈 | 目标位置 | 导航状态、反馈 |
+| **Perception** | 多模态感知、语义标注 | 图像、场景 | 语义标签、对象信息 |
+| **Nav2** | 底层路径规划、障碍避免、控制 | 目标姿态 | 运动指令 |
+
+### 核心数据流示例
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant IM as Interaction Manager
+    participant NLP
+    participant Planner
+    participant MapMgr as Map Manager
+    participant Executor
+    participant Nav2
+    
+    User->>IM: "去客厅沙发"
+    activate IM
+    IM->>NLP: ProcessNLPQuery
+    activate NLP
+    NLP->>NLP: VLM理解意图
+    NLP-->>IM: {intent, confidence, entities}
+    deactivate NLP
+    
+    IM->>Planner: PlanNavigation
+    activate Planner
+    Planner->>MapMgr: QuerySemantic
+    activate MapMgr
+    MapMgr-->>Planner: 候选节点
+    deactivate MapMgr
+    Planner->>Planner: 路径规划
+    Planner-->>IM: 导航路径
+    deactivate Planner
+    
+    IM->>Executor: ExecuteNavigation
+    activate Executor
+    Executor->>MapMgr: GetNodePose
+    Executor->>Nav2: NavigateToPose
+    activate Nav2
+    
+    loop 监控反馈
+        Nav2-->>Executor: 进度反馈
+        Executor-->>IM: 任务状态更新
+    end
+    
+    Nav2-->>Executor: 导航完成
+    deactivate Nav2
+    Executor-->>IM: 任务完成
+    deactivate Executor
+    
+    IM-->>User: 导航完成
+    deactivate IM
+```
+
+### 工作空间拓扑
+
+```
+~/yahboomcar_ros2_ws/
+│
+├── 📁 sttg_nav_ws/                  # STTG导航系统工作空间
+│   ├── src/
+│   │   ├── sstg_msgs/               # 消息定义
+│   │   ├── sstg_map_manager/        # 地图管理
+│   │   ├── sstg_nlp_interface/      # 自然语言处理
+│   │   ├── sstg_navigation_planner/ # 路径规划
+│   │   ├── sstg_navigation_executor/# 导航执行
+│   │   ├── sstg_interaction_manager/# 任务编排
+│   │   └── sstg_perception/         # 感知模块
+│   ├── build/ & install/
+│   └── README.md & INSTALLATION.md
+│
+└── 📁 yahboomcar_ws/                # YahboomCar工作空间
+    └── src/                         # 机器人控制包（不含STTG）
 ```
 
 ### 核心组件
 
 1. **`sstg_interaction_manager`** - 任务编排和系统协调
+   - 管理导航任务的完整生命周期
+   - 协调各模块的通信
+   - 提供任务状态查询和取消功能
+
 2. **`sstg_nlp_interface`** - 自然语言处理和意图识别
+   - 集成VLM（Vision-Language Model）进行语义理解
+   - 支持多模态输入（文本、图像）
+   - 提取用户意图和实体信息
+
 3. **`sstg_navigation_planner`** - 语义路径规划
+   - 基于意图的语义匹配
+   - 拓扑路径规划
+   - 候选点生成与排序
+
 4. **`sstg_navigation_executor`** - Nav2导航执行和监控
-5. **`sstg_map_manager`** - 拓扑地图管理和Web界面
+   - Nav2集成与通信
+   - 实时导航反馈
+   - 进度监控和状态报告
+
+5. **`sstg_map_manager`** - 拓扑地图管理
+   - 地图构建与存储
+   - 语义节点查询
+   - Web可视化界面
+
 6. **`sstg_perception`** - 多模态感知和语义标注
-7. **`sstg_msgs`** - 统一的消息和服务接口定义
+   - 图像捕获与处理
+   - VLM语义标注
+   - 物体识别和场景理解
+
+7. **`sstg_msgs`** - 统一接口定义
+   - 7个核心消息类型
+   - 8个服务接口
+   - 标准化通信格式
 
 ## � 工作空间架构
 
