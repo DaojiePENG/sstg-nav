@@ -21,7 +21,7 @@ PointCloudMapper::PointCloudMapper() : Node("pointcloud_mapping")
     this->declare_parameter<std::string>("topicTcw", "/RGBD/CameraPose");
     this->declare_parameter<std::string>("local_frame_id", "camera");
     this->declare_parameter<std::string>("global_frame_id", "camera");
-    this->declare_parameter<std::string>("node_path", "/root/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_slam/pcl/");
+    this->declare_parameter<std::string>("node_path", "/root/sstg_nav/yahboomcar_ws/src/yahboomcar_slam/pcl/");
     this->declare_parameter<bool>("use_viewer", false);
     this->declare_parameter<float>("fx", 517.306408);
     this->declare_parameter<float>("fy", 516.469215);

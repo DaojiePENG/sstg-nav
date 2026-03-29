@@ -92,15 +92,15 @@ ros2 pkg list | grep nav2
 
 ```bash
 # 进入项目目录
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 ```
 
 如果需要克隆项目：
 
 ```bash
 # 根据实际URL进行克隆
-git clone <repository_url> ~/yahboomcar_ros2_ws
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+git clone <repository_url> ~/sstg_nav
+cd ~/sstg_nav/sstg_nav_ws
 ```
 
 ### 第5步：安装Python依赖
@@ -123,7 +123,7 @@ python3 -c "import fastapi, uvicorn, networkx; print('✓ All dependencies insta
 
 ```bash
 # 进入工作空间
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 
 # 创建符号链接安装（便于开发）
 colcon build --symlink-install
@@ -138,10 +138,10 @@ colcon build --symlink-install
 
 ```bash
 # Source新构建的工作空间
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 
 # 添加到bashrc自动加载
-echo "source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash" >> ~/.bashrc
+echo "source ~/sstg_nav/sstg_nav_ws/install/setup.bash" >> ~/.bashrc
 ```
 
 ### 第8步：验证安装
@@ -277,7 +277,7 @@ python3 -m pip install fastapi uvicorn networkx
 **解决**:
 ```bash
 # 检查src目录是否包含SSTG包
-ls -la ~/yahboomcar_ros2_ws/sstg_nav_ws/src
+ls -la ~/sstg_nav/sstg_nav_ws/src
 
 # 应该看到这7个目录:
 # sstg_interaction_manager/
@@ -338,7 +338,7 @@ python3 --version
 # ✓ 应该是3.10或更高
 
 # 6. 检查源代码目录
-ls -la ~/yahboomcar_ros2_ws/sstg_nav_ws/src
+ls -la ~/sstg_nav/sstg_nav_ws/src
 # ✓ 应该包含7个SSTG包目录
 ```
 
@@ -349,7 +349,7 @@ ls -la ~/yahboomcar_ros2_ws/sstg_nav_ws/src
 ```bash
 # 1. 打开新终端
 # 2. Source工作空间
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 
 # 3. 运行单个节点测试
 ros2 run sstg_map_manager map_manager_node
@@ -362,7 +362,7 @@ ros2 node list | grep map_manager
 
 ```bash
 # 从项目根目录运行完整集成测试
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 
 # 查看测试结果
@@ -408,7 +408,7 @@ python3 -m pip install autopep8 pylint flake8
 
 ```bash
 # 进入项目目录
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 
 # 更新代码
 git pull origin main
@@ -429,9 +429,9 @@ source install/setup.bash
 
 ```bash
 # 删除工作空间
-rm -rf ~/yahboomcar_ros2_ws/sstg_nav_ws/build
-rm -rf ~/yahboomcar_ros2_ws/sstg_nav_ws/install
-rm -rf ~/yahboomcar_ros2_ws/sstg_nav_ws/log
+rm -rf ~/sstg_nav/sstg_nav_ws/build
+rm -rf ~/sstg_nav/sstg_nav_ws/install
+rm -rf ~/sstg_nav/sstg_nav_ws/log
 
 # 移除bashrc中的source行（可选）
 # 手动编辑 ~/.bashrc，删除相关行
@@ -441,7 +441,7 @@ rm -rf ~/yahboomcar_ros2_ws/sstg_nav_ws/log
 
 遇到问题？
 
-1. **查看日志**: `cat ~/yahboomcar_ros2_ws/sstg_nav_ws/log/latest/*.log`
+1. **查看日志**: `cat ~/sstg_nav/sstg_nav_ws/log/latest/*.log`
 2. **检查ROS2**: `ros2 doctor`
 3. **查阅文档**: 参考 [README.md](README.md)
 4. **运行诊断**: `./project_test/run_tests.sh`

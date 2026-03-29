@@ -45,7 +45,7 @@ ros2 launch yahboomcar_nav navigation_dwa_launch.py
 
 **步骤5: 启动Perception节点**（终端5）
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node
@@ -74,7 +74,7 @@ ros2 service list | grep capture_panorama
 pip install opencv-python numpy requests Pillow
 
 # 2. 确保已构建包
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 colcon build --packages-select sstg_msgs sstg_perception
 
 # 3. Source 环境
@@ -90,7 +90,7 @@ export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 
 ```bash
 # 前台运行（可查看实时日志）
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node
@@ -136,7 +136,7 @@ ros2 launch sstg_perception perception.launch.py \
 
 ```bash
 # 一键启动并测试所有功能
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception
 bash scripts/test_perception_services.sh
 ```
 
@@ -650,7 +650,7 @@ ros2 launch yahboomcar_nav navigation_dwa_launch.py
 ros2 launch yahboomcar_nav display_nav_launch.py
 
 # 终端5: Perception节点
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node
@@ -724,7 +724,7 @@ file /tmp/sstg_perception/node_0/*.png
 使用一键测试脚本：
 
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception
 bash scripts/test_perception_services.sh
 ```
 
@@ -741,7 +741,7 @@ bash scripts/test_perception_services.sh
 运行 Python 单元测试：
 
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception/test
+cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception/test
 python3 test_perception.py
 ```
 
@@ -756,7 +756,7 @@ python3 test_perception.py
 测试相机图像接收：
 
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 python3 src/sstg_perception/test/test_camera_subscriber.py
 ```
@@ -861,7 +861,7 @@ rclpy.shutdown()
 测试 VLM API 响应时间：
 
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 
 python3 << 'EOF'
@@ -897,7 +897,7 @@ EOF
 ros2 node list | grep perception_node
 
 # 如果没有输出，启动节点
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node &
@@ -946,7 +946,7 @@ ros2 launch orbbec_camera gemini_330_series.launch.py
 **解决方案**：
 ```bash
 # 步骤 1: 清理并重新编译
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 rm -rf build/sstg_perception install/sstg_perception
 colcon build --packages-select sstg_perception
 
@@ -1028,7 +1028,7 @@ ping -c 3 dashscope.aliyuncs.com
 
 运行完整诊断：
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception
 bash scripts/test_perception_services.sh
 ```
 

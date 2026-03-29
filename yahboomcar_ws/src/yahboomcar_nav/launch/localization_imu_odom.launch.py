@@ -27,7 +27,7 @@ def generate_launch_description():
 
     load_state_filename_arg = DeclareLaunchArgument(
         'load_state_filename',
-        default_value='/home/jetson/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_nav/maps/yahboomcar.pbstream'
+        default_value='/home/jetson/sstg_nav/yahboomcar_ws/src/yahboomcar_nav/maps/yahboomcar.pbstream'
         )
 
     use_rviz_arg = DeclareLaunchArgument(

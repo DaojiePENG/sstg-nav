@@ -602,8 +602,8 @@ Located in `test/test_navigation_executor.py`:
 
 Run tests:
 ```bash
-cd /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_navigation_executor
-PYTHONPATH=/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/sstg_navigation_executor/lib/python3.10/site-packages:$PYTHONPATH python test/test_navigation_executor.py
+cd /home/daojie/sstg_nav/yahboomcar_ws/src/sstg_navigation_executor
+PYTHONPATH=/home/daojie/sstg_nav/yahboomcar_ws/install/sstg_navigation_executor/lib/python3.10/site-packages:$PYTHONPATH python test/test_navigation_executor.py
 ```
 
 ### Integration Testing
@@ -679,7 +679,7 @@ For parallel multi-robot execution, consider:
 2. Add unit tests in `test/test_navigation_executor.py`
 3. Update this MODULE_GUIDE.md with new methods
 4. Run full test suite: `PYTHONPATH=/path/to/install/lib/python3.10/site-packages:$PYTHONPATH python test/test_navigation_executor.py`, 
-e.g., `PYTHONPATH=/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/sstg_navigation_executor/lib/python3.10/site-packages:$PYTHONPATH /home/daojie/anaconda3/envs/hw_nav/bin/python test/test_navigation_executor.py`
+e.g., `PYTHONPATH=/home/daojie/sstg_nav/yahboomcar_ws/install/sstg_navigation_executor/lib/python3.10/site-packages:$PYTHONPATH /home/daojie/anaconda3/envs/hw_nav/bin/python test/test_navigation_executor.py`
 5. Rebuild: `colcon build --packages-select sstg_navigation_executor`
 
 ### Code Style
@@ -705,7 +705,7 @@ e.g., `PYTHONPATH=/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/sstg_nav
 ## Support & Troubleshooting
 
 For issues or questions:
-1. Check `/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/log/` for build logs
+1. Check `/home/daojie/sstg_nav/yahboomcar_ws/log/` for build logs
 2. Run unit tests to verify core functionality
 3. Monitor ROS2 topics: `ros2 topic list` and `ros2 topic echo`
 4. Check node status: `ros2 node list` and `ros2 node info /navigation_executor`

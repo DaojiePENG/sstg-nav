@@ -16,7 +16,7 @@ ros2 launch yahboomcar_nav navigation_dwa_launch.py
 ros2 launch yahboomcar_nav display_nav_launch.py
 
 # 终端5: 启动perception节点
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node
@@ -74,7 +74,7 @@ ls -lh /tmp/sstg_perception/node_0/
 ### 启动 Perception 节点（推荐）
 ```bash
 # 方法 1: 前台运行（可查看日志）
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node
@@ -109,13 +109,13 @@ ros2 run image_view image_view image:=/camera/rgb/image_raw
 
 ### 运行测试
 ```bash
-cd /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception/test
+cd /home/daojie/sstg_nav/yahboomcar_ws/src/sstg_perception/test
 python3 test_perception.py
 ```
 
 ### 构建包
 ```bash
-cd /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws
+cd /home/daojie/sstg_nav/yahboomcar_ws
 colcon build --symlink-install --packages-select sstg_perception
 ```
 
@@ -363,7 +363,7 @@ export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 source /opt/ros/humble/setup.bash
 
 # 工作空间设置
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 ```
 
 ---
@@ -449,7 +449,7 @@ print(f"All objects: {len(merged.objects)}")
 
 ```bash
 # 步骤 1: 编译（如果修改了代码）
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 colcon build --packages-select sstg_perception
 
 # 步骤 2: Source 环境
@@ -473,7 +473,7 @@ ros2 service call /annotate_semantic sstg_msgs/srv/AnnotateSemantic \
 
 ```bash
 # 运行一键测试脚本
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception
 bash scripts/test_perception_services.sh
 ```
 

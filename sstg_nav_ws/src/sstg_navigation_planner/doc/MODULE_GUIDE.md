@@ -235,7 +235,7 @@ class NavigationPlanResult:
 运行模块测试：
 
 ```bash
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws/src/sstg_navigation_planner
+cd ~/sstg_nav/sstg_nav_ws/src/sstg_navigation_planner
 python3 test/test_navigation_planner.py
 ```
 

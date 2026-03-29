@@ -200,7 +200,7 @@ error_message: string  # 错误信息
 
 ```bash
 # 运行所有测试
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws/src/sstg_nlp_interface
+cd ~/sstg_nav/sstg_nav_ws/src/sstg_nlp_interface
 python3 test/test_nlp_interface.py
 
 # 运行特定测试

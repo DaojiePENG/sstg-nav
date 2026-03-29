@@ -32,7 +32,7 @@ yahboomcar_ws/src/
 ### Phase 3.1 之后（新结构 - 当前）✅
 
 ```
-yahboomcar_ros2_ws/
+sstg_nav/
 ├── sstg_nav_ws/           # ⭐ SSTG独立工作空间
 │   ├── src/
 │   │   ├── sstg_interaction_manager/
@@ -93,7 +93,7 @@ yahboomcar_ros2_ws/
 
 ```bash
 # 构建独立的SSTG导航系统
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -102,10 +102,10 @@ source install/setup.bash
 
 ```bash
 # 确保已source SSTG工作空间
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 
 # 运行集成测试
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 ```
 

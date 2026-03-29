@@ -16,7 +16,7 @@
 
 ```bash
 # 1. 切换到工作空间
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 
 # 2. 编译包（如果未编译或有更新）
 colcon build --packages-select sstg_perception
@@ -51,7 +51,7 @@ import sys
 import os
 
 # 添加 sstg_perception 包路径
-PERCEPTION_PATH = '/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/sstg_perception/lib/python3.10/site-packages'
+PERCEPTION_PATH = '/home/daojie/sstg_nav/yahboomcar_ws/install/sstg_perception/lib/python3.10/site-packages'
 if PERCEPTION_PATH not in sys.path:
     sys.path.insert(0, PERCEPTION_PATH)
 
@@ -84,7 +84,7 @@ except ModuleNotFoundError as e:
 
 ```bash
 # 使用已创建的脚本
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/setup_perception_env.sh
+source ~/sstg_nav/yahboomcar_ws/setup_perception_env.sh
 
 # 然后启动 Jupyter
 jupyter notebook
@@ -292,7 +292,7 @@ else:
     print("✗ 未找到 sstg_perception 路径")
     print("\n可能需要:")
     print("1. 编译包: colcon build --packages-select sstg_perception")
-    print("2. 添加路径: sys.path.insert(0, '/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/sstg_perception/lib/python3.10/site-packages')")
+    print("2. 添加路径: sys.path.insert(0, '/home/daojie/sstg_nav/yahboomcar_ws/install/sstg_perception/lib/python3.10/site-packages')")
 
 print("\n" + "-" * 50)
 print("模块导入测试:")
@@ -323,7 +323,7 @@ for name, module_path in modules:
 
 ```bash
 # 在终端中运行
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 rm -rf build/sstg_perception install/sstg_perception
 colcon build --packages-select sstg_perception
 ```

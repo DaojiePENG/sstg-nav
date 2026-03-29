@@ -8,7 +8,7 @@
 
 **使用方法**：
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception
 bash scripts/test_perception_services.sh
 ```
 
@@ -29,7 +29,7 @@ bash scripts/test_perception_services.sh
 ==============================================================
 
 [INFO] 步骤 1/6: 切换到工作空间目录...
-[SUCCESS] 当前目录: /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws
+[SUCCESS] 当前目录: /home/daojie/sstg_nav/yahboomcar_ws
 
 [INFO] 步骤 2/6: 编译 sstg_perception 包...
 [SUCCESS] 编译成功
@@ -96,7 +96,7 @@ bash scripts/test_perception_services.sh
 
 ### 1. 启动节点
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node

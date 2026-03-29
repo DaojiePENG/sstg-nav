@@ -16,7 +16,7 @@
 ```bash
 # 1. 启动拓扑图管理节点
 source /opt/ros/humble/setup.bash
-python3 /home/daojie/yahboomcar_ros2_ws/run_map_manager.py
+python3 /home/daojie/sstg_nav/run_map_manager.py
 
 # 2. 在另一个终端启动WebUI
 source /opt/ros/humble/setup.bash
@@ -31,7 +31,7 @@ python3 -c "from sstg_map_manager.map_webui import main; main()"
 ```bash
 # 完整sourcing后尝试
 source /opt/ros/humble/setup.bash
-source /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source /home/daojie/sstg_nav/yahboomcar_ws/install/setup.bash
 
 # 这些命令可能需要调整ROS_PACKAGE_PATH
 ros2 run sstg_map_manager map_manager_node
@@ -58,7 +58,7 @@ python3 -m pip install fastapi uvicorn networkx
 ## 📁 关键文件位置
 
 ```
-/home/daojie/yahboomcar_ros2_ws/
+/home/daojie/sstg_nav/
 └── yahboomcar_ws/
     ├── src/
     │   ├── sstg_msgs/              # 消息定义包
@@ -75,7 +75,7 @@ python3 -m pip install fastapi uvicorn networkx
 ```bash
 # 完整sourcing后尝试
 source /opt/ros/humble/setup.bash
-source /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source /home/daojie/sstg_nav/yahboomcar_ws/install/setup.bash
 
 ros2 run sstg_map_manager map_webui
 

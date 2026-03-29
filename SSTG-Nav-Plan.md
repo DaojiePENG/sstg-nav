@@ -542,7 +542,7 @@ uvicorn>=0.23   # WebUI服务
 ## 七、文件树结构规划
 
 ```
-yahboomcar_ros2_ws/
+sstg_nav/
 ├── src/
 │   ├── sstg_msgs/                    # 消息定义包
 │   │   ├── CMakeLists.txt

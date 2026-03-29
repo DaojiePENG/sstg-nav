@@ -10,7 +10,7 @@
 #   5. 显示结果和日志
 #
 # 使用方法：
-#   cd ~/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_perception
+#   cd ~/sstg_nav/yahboomcar_ws/src/sstg_perception
 #   bash scripts/test_perception_services.sh
 # =============================================================================
 
@@ -49,7 +49,7 @@ echo ""
 # 步骤 1: 切换到工作空间目录
 # =============================================================================
 log_info "步骤 1/6: 切换到工作空间目录..."
-cd /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws
+cd /home/daojie/sstg_nav/yahboomcar_ws
 log_success "当前目录: $(pwd)"
 echo ""
 

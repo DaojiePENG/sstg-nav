@@ -527,7 +527,7 @@ ros2 run sstg_navigation_executor executor_node \
 
 ```bash
 # Check version from package.xml
-grep '<version>' /home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_navigation_executor/package.xml
+grep '<version>' /home/daojie/sstg_nav/yahboomcar_ws/src/sstg_navigation_executor/package.xml
 
 # Current: 0.1.0
 
@@ -614,7 +614,7 @@ if __name__ == '__main__':
 
 | File | Location |
 |------|----------|
-| Package root | `/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/src/sstg_navigation_executor/` |
+| Package root | `/home/daojie/sstg_nav/yahboomcar_ws/src/sstg_navigation_executor/` |
 | Main node | `sstg_navigation_executor/executor_node.py` |
 | Nav2 client | `sstg_navigation_executor/nav2_client.py` |
 | Monitor | `sstg_navigation_executor/navigation_monitor.py` |

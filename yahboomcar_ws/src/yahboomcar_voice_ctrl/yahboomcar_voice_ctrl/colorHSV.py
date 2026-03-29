@@ -38,7 +38,7 @@ class Color_Identify(Node):
         self.declare_param()
         self.spe = Speech()
         self.model = "Gennal"
-        self.hsv_text = "/root/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_astra/yahboomcar_astra/colorHSV.text"
+        self.hsv_text = "/root/sstg_nav/yahboomcar_ws/src/yahboomcar_astra/yahboomcar_astra/colorHSV.text"
         self.capture = cv.VideoCapture(0)
         if cv_edition[0]=='3': self.capture.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc(*'XVID'))
         else: self.capture.set(cv.CAP_PROP_FOURCC, cv.VideoWriter.fourcc('M', 'J', 'P', 'G'))

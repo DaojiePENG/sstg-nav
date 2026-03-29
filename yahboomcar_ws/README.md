@@ -39,7 +39,7 @@ yahboomcar_ws/
 
 ```bash
 # 1. 进入工作空间
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 
 # 2. 安装依赖
 sudo apt-get install ros-humble-nav2 ros-humble-rclpy
@@ -51,7 +51,7 @@ colcon build --symlink-install
 source install/setup.bash
 
 # 5. 添加到bashrc（可选）
-echo "source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash" >> ~/.bashrc
+echo "source ~/sstg_nav/yahboomcar_ws/install/setup.bash" >> ~/.bashrc
 ```
 
 ## 🤖 YahboomCar 机器人包
@@ -88,7 +88,7 @@ echo "source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash" >> ~/.bashrc
 
 ```bash
 # 只Source YahboomCar工作空间
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 
 # 启动机器人
 ros2 launch yahboomcar_bringup bringup.launch.py
@@ -100,14 +100,14 @@ ros2 launch yahboomcar_bringup bringup.launch.py
 
 ```bash
 # Source两个工作空间
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 
 # 启动YahboomCar机器人
 ros2 launch yahboomcar_bringup bringup.launch.py &
 
 # 启动SSTG导航系统
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 ```
 
@@ -117,7 +117,7 @@ cd ~/yahboomcar_ros2_ws
 
 ```bash
 # 只需要SSTG工作空间，不需要YahboomCar工作空间
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 
 # 确保目标机器人支持：
 # - ROS2 Humble
@@ -125,7 +125,7 @@ source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
 # - 基础移动控制接口
 
 # 启动SSTG导航系统
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 ```
 
@@ -135,7 +135,7 @@ cd ~/yahboomcar_ros2_ws
 
 ```bash
 # 确保已source此工作空间
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 
 # 启动所有硬件驱动和基础节点
 ros2 launch yahboomcar_bringup bringup.launch.py
@@ -160,7 +160,7 @@ ros2 topic echo /color/image_raw  # 摄像头图像
 ### 构建特定包
 
 ```bash
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 
 # 只构建某个包
 colcon build --packages-select yahboomcar_ctrl
@@ -170,7 +170,7 @@ colcon build --packages-select yahboomcar_ctrl
 
 ```bash
 # 启用详细日志
-ROS_LOG_DIR=~/yahboomcar_ros2_ws/yahboomcar_ws/log ros2 launch yahboomcar_bringup bringup.launch.py
+ROS_LOG_DIR=~/sstg_nav/yahboomcar_ws/log ros2 launch yahboomcar_bringup bringup.launch.py
 
 # 使用rqt监控节点
 rqt_graph

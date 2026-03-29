@@ -233,7 +233,7 @@ node_0/
 ```bash
 # 1. 启动相机和导航（如果未运行）
 # 2. 启动perception节点
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 source install/setup.bash
 export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
 ros2 run sstg_perception perception_node

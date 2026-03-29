@@ -31,7 +31,7 @@
 
 1. **构建工作空间**
    ```bash
-   cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+   cd ~/sstg_nav/sstg_nav_ws
    
    # 安装依赖
    sudo apt-get install ros-humble-nav2 ros-humble-rclpy
@@ -54,7 +54,7 @@
 3. **启动系统**
    ```bash
    # 方式1：使用项目集成脚本（推荐）
-   cd ~/yahboomcar_ros2_ws
+   cd ~/sstg_nav
    ./project_test/run_tests.sh
    
    # 方式2：手动启动各节点
@@ -116,7 +116,7 @@ sstg_nav_ws/
 
 ### 构建特定包
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 
 # 只构建某个包
 colcon build --packages-select sstg_map_manager
@@ -125,7 +125,7 @@ colcon build --packages-select sstg_map_manager
 ### 运行测试
 ```bash
 # 项目集成测试
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 
 # 查看测试报告
@@ -169,8 +169,8 @@ http://localhost:8000
 
 ```bash
 # 同时source两个工作空间的setup
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 
 # 这样就可以同时使用SSTG导航和Yahboom机器人控制节点
 ```

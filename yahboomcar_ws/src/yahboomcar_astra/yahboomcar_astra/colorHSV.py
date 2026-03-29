@@ -37,7 +37,7 @@ class Color_Identify(Node):
         self.cols, self.rows = 0, 0
         self.Mouse_XY = (0, 0)
         self.declare_param()
-        self.hsv_text = "/home/jetson/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_astra/yahboomcar_astra/colorHSV.text"
+        self.hsv_text = "/home/jetson/sstg_nav/yahboomcar_ws/src/yahboomcar_astra/yahboomcar_astra/colorHSV.text"
         
         # Image subscription setup
         self.bridge = CvBridge()

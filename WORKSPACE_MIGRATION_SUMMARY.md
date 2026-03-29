@@ -14,12 +14,12 @@
 ### 核心变化
 
 1. **工作空间分离**
-   - 所有7个SSTG核心包独立迁移到 `~/yahboomcar_ros2_ws/sstg_nav_ws/src/`
+   - 所有7个SSTG核心包独立迁移到 `~/sstg_nav/sstg_nav_ws/src/`
    - YahboomCar工作空间专注于机器人硬件控制
 
 2. **新工作空间结构**
    ```
-   ~/yahboomcar_ros2_ws/
+   ~/sstg_nav/
    ├── sstg_nav_ws/           # ⭐ 新的SSTG独立工作空间
    │   ├── src/               # 7个SSTG包
    │   ├── build/             # 构建输出
@@ -114,7 +114,7 @@ yahboomcar_ws/src/
 
 ```bash
 # 构建所有包
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -123,13 +123,13 @@ source install/setup.bash
 
 ```bash
 # 仅构建SSTG系统
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 colcon build --symlink-install
 source install/setup.bash
 
 # 或同时使用YahboomCar和SSTG
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 ```
 
 ## 📚 文档导航改进
@@ -137,7 +137,7 @@ source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
 ### 新的文档结构
 
 ```
-~/yahboomcar_ros2_ws/
+~/sstg_nav/
 ├── README.md                      # 项目总体架构
 ├── PROJECT_SUMMARY.md             # 项目完成情况（已更新）
 ├── SSTG_User_Guide.md             # 用户指南
@@ -244,14 +244,14 @@ source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
 
 **迁移前**:
 ```bash
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 source yahboomcar_ws/install/setup.bash
 ros2 launch sstg_map_manager ...
 ```
 
 **迁移后** ✅:
 ```bash
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 colcon build --symlink-install
 source install/setup.bash
 ros2 launch sstg_map_manager ...
@@ -261,15 +261,15 @@ ros2 launch sstg_map_manager ...
 
 **迁移前**:
 ```bash
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 colcon build --symlink-install
 source install/setup.bash
 ```
 
 **迁移后** ✅:
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
 # 同时可用两个系统的包
 ```
 
@@ -278,7 +278,7 @@ source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
 **迁移后新增** ✅:
 ```bash
 # 只需要这个，不需要YahboomCar工作空间
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 ```
 
 ---
@@ -324,7 +324,7 @@ source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
 ### 构建SSTG系统
 
 ```bash
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -332,7 +332,7 @@ source install/setup.bash
 ### 构建YahboomCar系统
 
 ```bash
-cd ~/yahboomcar_ros2_ws/yahboomcar_ws
+cd ~/sstg_nav/yahboomcar_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -340,17 +340,17 @@ source install/setup.bash
 ### 启动完整系统
 
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
-source ~/yahboomcar_ros2_ws/yahboomcar_ws/install/setup.bash
-cd ~/yahboomcar_ros2_ws
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/yahboomcar_ws/install/setup.bash
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 ```
 
 ### 运行集成测试
 
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
-cd ~/yahboomcar_ros2_ws
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 ```
 
@@ -364,8 +364,8 @@ cd ~/yahboomcar_ros2_ws
    - 两者可同时source
 
 2. **旧的命令可能不再工作**
-   - ❌ `cd ~/yahboomcar_ros2_ws && colcon build` (会找不到SSTG包)
-   - ✅ `cd ~/yahboomcar_ros2_ws/sstg_nav_ws && colcon build` (正确)
+   - ❌ `cd ~/sstg_nav && colcon build` (会找不到SSTG包)
+   - ✅ `cd ~/sstg_nav/sstg_nav_ws && colcon build` (正确)
 
 3. **如果找不到包**
    ```bash
@@ -373,7 +373,7 @@ cd ~/yahboomcar_ros2_ws
    echo $CMAKE_PREFIX_PATH | grep sstg_nav_ws
    
    # 如果没有，手动source
-   source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+   source ~/sstg_nav/sstg_nav_ws/install/setup.bash
    ```
 
 ---

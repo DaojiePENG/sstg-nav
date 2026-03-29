@@ -13,7 +13,7 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     map_yaml_path = LaunchConfiguration(
-        'map', default='/home/daojie/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_nav/maps/yahboomcar.yaml')
+        'map', default='/home/daojie/sstg_nav/yahboomcar_ws/src/yahboomcar_nav/maps/yahboomcar.yaml')
     nav2_param_path = LaunchConfiguration('params_file', default=os.path.join(
         package_path, 'params', 'teb_nav_params.yaml'))
 

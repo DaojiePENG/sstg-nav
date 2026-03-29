@@ -39,7 +39,7 @@ class Color_Identify(Node):
         self.declare_param()
         self.spe = Speech()
         self.model = "Gennal"
-        self.hsv_text = "/home/jetson/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_astra/yahboomcar_astra/colorHSV.text"
+        self.hsv_text = "/home/jetson/sstg_nav/yahboomcar_ws/src/yahboomcar_astra/yahboomcar_astra/colorHSV.text"
         # Image subscription setup
         self.bridge = CvBridge()
         self.current_frame = None

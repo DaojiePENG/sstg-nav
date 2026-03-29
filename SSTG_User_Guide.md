@@ -74,7 +74,7 @@ python3 --version          # 应显示 3.10+
 
 ```bash
 # 如果已有工作空间，进入目录
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 
 # 确认目录结构（应该看到这两个工作空间）
 ls -la | grep nav_ws
@@ -84,7 +84,7 @@ ls -la | grep nav_ws
 
 ```bash
 # 进入SSTG独立工作空间
-cd ~/yahboomcar_ros2_ws/sstg_nav_ws
+cd ~/sstg_nav/sstg_nav_ws
 
 # 安装系统依赖（如果之前没有安装）
 sudo apt-get install ros-humble-nav2 ros-humble-rclpy -y
@@ -127,7 +127,7 @@ ros2 run sstg_map_manager map_manager_node --help 2>&1 | head -5
 
 ```bash
 # 进入项目根目录
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 
 # 运行启动脚本（自动处理所有事情）
 ./project_test/run_tests.sh
@@ -147,7 +147,7 @@ cd ~/yahboomcar_ros2_ws
 
 **终端 1 - 启动Map Manager（地图管理）**
 ```bash
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 source sstg_nav_ws/install/setup.bash
 
 # 初始化测试地图
@@ -159,25 +159,25 @@ ros2 run sstg_map_manager map_manager_node
 
 **终端 2 - 启动NLP Interface（自然语言处理）**
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 ros2 run sstg_nlp_interface nlp_node
 ```
 
 **终端 3 - 启动Navigation Planner（路径规划）**
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 ros2 run sstg_navigation_planner planning_node
 ```
 
 **终端 4 - 启动Navigation Executor（导航执行）**
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 ros2 run sstg_navigation_executor executor_node
 ```
 
 **终端 5 - 启动Interaction Manager（系统协调）**
 ```bash
-source ~/yahboomcar_ros2_ws/sstg_nav_ws/install/setup.bash
+source ~/sstg_nav/sstg_nav_ws/install/setup.bash
 ros2 run sstg_interaction_manager interaction_manager_node
 ```
 
@@ -383,10 +383,10 @@ ros2 service call /start_task sstg_msgs/srv/ProcessNLPQuery "{
 
 ```bash
 # 查看各个包的配置
-ls -la ~/yahboomcar_ros2_ws/sstg_nav_ws/src/*/config/
+ls -la ~/sstg_nav/sstg_nav_ws/src/*/config/
 
 # 例如查看规划器参数
-cat ~/yahboomcar_ros2_ws/sstg_nav_ws/src/sstg_navigation_planner/config/planning_params.yaml
+cat ~/sstg_nav/sstg_nav_ws/src/sstg_navigation_planner/config/planning_params.yaml
 ```
 
 ### 常用参数调整
@@ -559,10 +559,10 @@ export ROS_LOG_LEVEL=debug
 ros2 run sstg_interaction_manager interaction_manager_node
 
 # 查看测试报告
-cat ~/yahboomcar_ros2_ws/project_test/integration_test_report.md
+cat ~/sstg_nav/project_test/integration_test_report.md
 
 # 检查各包的详细文档
-ls -la ~/yahboomcar_ros2_ws/sstg_nav_ws/src/*/doc/
+ls -la ~/sstg_nav/sstg_nav_ws/src/*/doc/
 ```
 
 ## 实验和示例
@@ -574,7 +574,7 @@ ls -la ~/yahboomcar_ros2_ws/sstg_nav_ws/src/*/doc/
 **步骤**:
 ```bash
 # 1. 启动系统
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 
 # 2. 在新终端发送导航任务
@@ -671,7 +671,7 @@ sstg_nav_ws/
 
 ```bash
 # 运行完整集成测试
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 ./project_test/run_tests.sh
 
 # 查看测试结果
@@ -732,7 +732,7 @@ echo '=== Services ==='; ros2 service list | head -20
 ```bash
 # 启用详细日志并收集
 export ROS_LOG_LEVEL=debug
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 
 # 后台运行，重定向日志
 ros2 run sstg_interaction_manager interaction_manager_node > debug.log 2>&1 &
@@ -780,7 +780,7 @@ cat debug.log | tail -50
 
 ```bash
 # 进入工作空间
-cd ~/yahboomcar_ros2_ws
+cd ~/sstg_nav
 
 # 一键启动所有系统
 ./project_test/run_tests.sh

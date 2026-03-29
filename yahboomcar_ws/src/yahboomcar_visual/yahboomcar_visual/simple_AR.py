@@ -57,7 +57,7 @@ class simple_AR(Node):
 		self.img_name = 'img'
 		self.patternSize = (6, 9)
 		self.bridge = CvBridge()
-		yaml_path = '/home/jetson/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_visual/astra.yaml'
+		yaml_path = '/home/jetson/sstg_nav/yahboomcar_ws/src/yahboomcar_visual/astra.yaml'
 		if os.path.exists(yaml_path):
 			fs = cv.FileStorage(yaml_path, cv.FileStorage_READ)
 			self.cameraMatrix = fs.getNode("camera_matrix").mat()

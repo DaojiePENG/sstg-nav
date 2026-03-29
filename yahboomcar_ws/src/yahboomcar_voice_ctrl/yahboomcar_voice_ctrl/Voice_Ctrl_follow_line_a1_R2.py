@@ -41,7 +41,7 @@ class LineDetect(Node):
 		self.windows_name = 'frame'
 		self.cols, self.rows = 0, 0
 		self.Mouse_XY = (0, 0)
-		self.hsv_text = "/home/jetson/yahboomcar_ros2_ws/yahboomcar_ws/src/yahboomcar_voice_ctrl/yahboomcar_voice_ctrl/LineFollowHSV.text"
+		self.hsv_text = "/home/jetson/sstg_nav/yahboomcar_ws/src/yahboomcar_voice_ctrl/yahboomcar_voice_ctrl/LineFollowHSV.text"
 		self.color = color_follow()
 		self.scale = 1000
 		self.FollowLinePID = (60, 0, 20)
