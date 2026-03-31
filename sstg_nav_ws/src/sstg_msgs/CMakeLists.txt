@@ -25,6 +25,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ProcessNLPQuery.srv"
   "srv/PlanNavigation.srv"
   "srv/ExecuteNavigation.srv"
+  "msg/PointArray.msg"
+  "msg/GoalTraceEvent.msg"
+  "srv/SaveRrtSession.srv"
   DEPENDENCIES
     builtin_interfaces
     geometry_msgs
