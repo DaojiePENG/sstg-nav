@@ -43,8 +43,9 @@ public:
 
         initMarkers();
 
-        RCLCPP_INFO(this->get_logger(), "Waiting for 5 clicked points: 4 corners + 1 seed point");
-        while (clicked_points_.size() < 5 && rclcpp::ok()) {
+        // Only need 1 clicked point as seed
+        RCLCPP_INFO(this->get_logger(), "Waiting for 1 clicked point (seed near robot)...");
+        while (clicked_points_.size() < 1 && rclcpp::ok()) {
             points_.header.stamp = this->now();
             points_.points = clicked_points_;
             shapes_pub_->publish(points_);
@@ -52,7 +53,7 @@ public:
             rclcpp::sleep_for(std::chrono::milliseconds(50));
         }
 
-        initializeSearchArea();
+        initializeFromMap();
         points_.points.clear();
         points_.header.stamp = this->now();
         shapes_pub_->publish(points_);
@@ -60,7 +61,7 @@ public:
         initialized_ = true;
         last_status_log_ = this->now();
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(10),
+            std::chrono::milliseconds(30),
             std::bind(&GlobalRRTDetector::rrtLoop, this));
 
         rclcpp::spin(this->shared_from_this());
@@ -99,72 +100,52 @@ private:
         points_.color.a = 1.0;
     }
 
-    void initializeSearchArea()
+    // Derive search area from current map extent — no manual corners needed
+    void updateSearchAreaFromMap()
     {
-        const auto &seed = clicked_points_[4];
+        if (mapData_.data.empty()) return;
 
-        float min_x = std::min({clicked_points_[0].x, clicked_points_[1].x, clicked_points_[2].x, clicked_points_[3].x});
-        float max_x = std::max({clicked_points_[0].x, clicked_points_[1].x, clicked_points_[2].x, clicked_points_[3].x});
-        float min_y = std::min({clicked_points_[0].y, clicked_points_[1].y, clicked_points_[2].y, clicked_points_[3].y});
-        float max_y = std::max({clicked_points_[0].y, clicked_points_[1].y, clicked_points_[2].y, clicked_points_[3].y});
+        float ox = mapData_.info.origin.position.x;
+        float oy = mapData_.info.origin.position.y;
+        float rez = mapData_.info.resolution;
+        float w = static_cast<float>(mapData_.info.width) * rez;
+        float h = static_cast<float>(mapData_.info.height) * rez;
 
-        min_x = std::min(min_x, static_cast<float>(seed.x));
-        max_x = std::max(max_x, static_cast<float>(seed.x));
-        min_y = std::min(min_y, static_cast<float>(seed.y));
-        max_y = std::max(max_y, static_cast<float>(seed.y));
-
-        const float margin = std::max(static_cast<float>(eta_ * 2.0), 0.5f);
-        min_x -= margin;
-        max_x += margin;
-        min_y -= margin;
-        max_y += margin;
+        const float margin = std::max(static_cast<float>(eta_ * 2.0), 1.0f);
+        float min_x = ox - margin;
+        float max_x = ox + w + margin;
+        float min_y = oy - margin;
+        float max_y = oy + h + margin;
 
         init_map_x_ = max_x - min_x;
         init_map_y_ = max_y - min_y;
         x_start_x_ = (min_x + max_x) * 0.5f;
         x_start_y_ = (min_y + max_y) * 0.5f;
+    }
+
+    void initializeFromMap()
+    {
+        const auto &seed = clicked_points_[0];
+
+        updateSearchAreaFromMap();
+
         tree_.clear();
         tree_.push_back({static_cast<float>(seed.x), static_cast<float>(seed.y)});
         line_.points.clear();
 
         RCLCPP_INFO(
             this->get_logger(),
-            "Global RRT area initialized: bbox=[%.2f, %.2f] x [%.2f, %.2f], seed=(%.2f, %.2f), eta=%.2f",
-            min_x, max_x, min_y, max_y, seed.x, seed.y, eta_);
-    }
-
-    void expandSearchArea(const geometry_msgs::msg::Point &p)
-    {
-        const float margin = std::max(static_cast<float>(eta_ * 2.0), 0.5f);
-        const float current_min_x = x_start_x_ - (init_map_x_ * 0.5f);
-        const float current_max_x = x_start_x_ + (init_map_x_ * 0.5f);
-        const float current_min_y = x_start_y_ - (init_map_y_ * 0.5f);
-        const float current_max_y = x_start_y_ + (init_map_y_ * 0.5f);
-
-        float min_x = std::min(current_min_x, static_cast<float>(p.x));
-        float max_x = std::max(current_max_x, static_cast<float>(p.x));
-        float min_y = std::min(current_min_y, static_cast<float>(p.y));
-        float max_y = std::max(current_max_y, static_cast<float>(p.y));
-
-        min_x -= margin;
-        max_x += margin;
-        min_y -= margin;
-        max_y += margin;
-
-        init_map_x_ = max_x - min_x;
-        init_map_y_ = max_y - min_y;
-        x_start_x_ = (min_x + max_x) * 0.5f;
-        x_start_y_ = (min_y + max_y) * 0.5f;
-
-        RCLCPP_INFO(
-            this->get_logger(),
-            "Global RRT area expanded by clicked point: bbox=[%.2f, %.2f] x [%.2f, %.2f], clicked=(%.2f, %.2f)",
-            min_x, max_x, min_y, max_y, p.x, p.y);
+            "Global RRT initialized from map extent: area=%.1f x %.1f, seed=(%.2f, %.2f), eta=%.2f",
+            init_map_x_, init_map_y_, seed.x, seed.y, eta_);
     }
 
     void mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
     {
         mapData_ = *msg;
+        // Auto-grow search area as SLAM expands the map
+        if (initialized_) {
+            updateSearchAreaFromMap();
+        }
     }
 
     void clickedCallback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
@@ -174,16 +155,66 @@ private:
         p.y = msg->point.y;
         p.z = msg->point.z;
 
-        if (initialized_) {
-            expandSearchArea(p);
+        if (!initialized_) {
+            if (clicked_points_.empty()) {
+                clicked_points_.push_back(p);
+            }
             return;
         }
 
-        if (clicked_points_.size() >= 5) {
-            return;
+        // After init, additional clicks plant seeds at free/unknown boundary
+        plantBoundarySeed(p);
+    }
+
+    void plantBoundarySeed(const geometry_msgs::msg::Point &p)
+    {
+        if (mapData_.data.empty() || tree_.empty()) return;
+
+        std::vector<float> clicked_pt = {static_cast<float>(p.x), static_cast<float>(p.y)};
+        std::vector<float> nearest = Nearest(tree_, clicked_pt);
+        float rez = mapData_.info.resolution;
+        float dist = Norm(nearest, clicked_pt);
+        int steps = std::min(static_cast<int>(dist / std::max(rez, 0.01f)), 500);
+        std::vector<float> best_free = nearest;
+
+        float dx = (clicked_pt[0] - nearest[0]);
+        float dy = (clicked_pt[1] - nearest[1]);
+        if (dist > 0.001f) { dx /= dist; dy /= dist; }
+
+        float map_ox = mapData_.info.origin.position.x;
+        float map_oy = mapData_.info.origin.position.y;
+        int map_w = static_cast<int>(mapData_.info.width);
+        int map_h = static_cast<int>(mapData_.info.height);
+
+        for (int i = 1; i <= steps; ++i) {
+            float wx = nearest[0] + dx * rez * i;
+            float wy = nearest[1] + dy * rez * i;
+            int gx = static_cast<int>(std::floor((wx - map_ox) / rez));
+            int gy = static_cast<int>(std::floor((wy - map_oy) / rez));
+            if (gx < 0 || gx >= map_w || gy < 0 || gy >= map_h) break;
+            int idx = gy * map_w + gx;
+            if (idx < 0 || idx >= static_cast<int>(mapData_.data.size())) break;
+            if (mapData_.data[idx] == 0) {
+                best_free = {wx, wy};
+            } else {
+                break;
+            }
         }
 
-        clicked_points_.push_back(p);
+        if (Norm(best_free, nearest) > rez * 2) {
+            tree_.push_back(best_free);
+            geometry_msgs::msg::Point p1, p2;
+            p1.x = nearest[0]; p1.y = nearest[1]; p1.z = 0.0;
+            p2.x = best_free[0]; p2.y = best_free[1]; p2.z = 0.0;
+            line_.points.push_back(p1);
+            line_.points.push_back(p2);
+            RCLCPP_INFO(this->get_logger(),
+                "Seed planted at boundary (%.2f, %.2f), tree=%zu",
+                best_free[0], best_free[1], tree_.size());
+        } else {
+            RCLCPP_INFO(this->get_logger(),
+                "Clicked (%.2f, %.2f) — no free boundary found along path", p.x, p.y);
+        }
     }
 
     void publishStatusIfDue()
@@ -195,8 +226,9 @@ private:
 
         RCLCPP_INFO(
             this->get_logger(),
-            "Global RRT stats: tree_nodes=%zu edges=%zu free=%zu frontier=%zu blocked=%zu",
-            tree_.size(), line_.points.size() / 2, free_count_, frontier_count_, obstacle_count_);
+            "Global RRT stats: tree_nodes=%zu edges=%zu free=%zu frontier=%zu blocked=%zu area=%.0fx%.0f",
+            tree_.size(), line_.points.size() / 2, free_count_, frontier_count_, obstacle_count_,
+            init_map_x_, init_map_y_);
 
         free_count_ = 0;
         frontier_count_ = 0;
@@ -209,6 +241,9 @@ private:
         if (mapData_.data.empty() || tree_.empty()) {
             return;
         }
+
+        const int batch = 30;
+        for (int b = 0; b < batch; ++b) {
 
         std::vector<float> x_rand, x_nearest, x_new;
 
@@ -258,6 +293,8 @@ private:
         else {
             ++obstacle_count_;
         }
+
+        } // end batch loop
 
         line_.header.stamp = this->now();
         shapes_pub_->publish(line_);

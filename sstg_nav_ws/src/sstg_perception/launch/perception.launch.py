@@ -9,6 +9,11 @@ from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration
 from launch.actions import DeclareLaunchArgument
 
+DEFAULT_PANORAMA_STORAGE_PATH = (
+    '/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/'
+    'sstg_rrt_explorer/captured_nodes'
+)
+
 
 def generate_launch_description():
     """生成启动配置"""
@@ -16,7 +21,7 @@ def generate_launch_description():
     # ======================== Perception 参数声明 ========================
     declare_panorama_path = DeclareLaunchArgument(
         'panorama_storage_path',
-        default_value='/tmp/sstg_perception',
+        default_value=DEFAULT_PANORAMA_STORAGE_PATH,
         description='Path to store panorama images'
     )
     
@@ -35,6 +40,7 @@ def generate_launch_description():
         parameters=[
             {
                 'api_base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                'api_key': os.getenv('DASHSCOPE_API_KEY', 'sk-942e8661f10f492280744a26fe7b953b'),
                 'vlm_model': 'qwen-vl-plus',
                 'panorama_storage_path': LaunchConfiguration('panorama_storage_path'),
                 'rgb_topic': '/camera/color/image_raw',

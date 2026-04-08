@@ -52,7 +52,10 @@ class PanoramaCapture:
                  camera_subscriber,
                  storage_path: str = '/tmp/sstg_panorama',
                  image_format: str = 'png',
-                 enable_navigation: bool = True):
+                 enable_navigation: bool = True,
+                 heading_provider: Optional[Callable[[str], Optional[float]]] = None,
+                 max_rotation_retries: int = 2,
+                 max_capture_retries: int = 2):
         """
         初始化全景图采集器
 
@@ -72,6 +75,9 @@ class PanoramaCapture:
         self.image_format = image_format
         self.panorama_angles = [0, 90, 180, 270]  # 四个采集方向
         self.enable_navigation = enable_navigation and NAV2_AVAILABLE
+        self.heading_provider = heading_provider
+        self.max_rotation_retries = max(1, int(max_rotation_retries))
+        self.max_capture_retries = max(1, int(max_capture_retries))
 
         # 状态
         self.images = {}  # {angle: image_array}
@@ -79,6 +85,7 @@ class PanoramaCapture:
         self.node_id = None
         self.timestamp = None
         self.pose = None
+        self.current_heading_deg = 0.0
         self.lock = threading.Lock()
 
         # 导航器（在日志函数初始化后）
@@ -123,6 +130,8 @@ class PanoramaCapture:
         """
         self.node_id = node_id
         self.pose = pose
+        self.current_heading_deg = float(pose.get('theta', 0.0))
+        self._refresh_heading(frame_id)
         self._reset_current_panorama()
 
         self.get_logger_func(f'\n{"="*60}')
@@ -149,26 +158,27 @@ class PanoramaCapture:
 
         for idx, angle in enumerate(self.panorama_angles):
             self.get_logger_func(f'\n  Direction {idx+1}/4: {angle}°')
-
-            # 旋转到目标角度
-            if self.enable_navigation:
-                self.get_logger_func(f'  🔄 Rotating to {angle}°...')
-                if not self._rotate_to_angle(angle, frame_id):
-                    self.get_logger_func(f'  ✗ Rotation failed')
-                    return None
-
-                # 等待稳定，同时持续处理相机消息
-                self.get_logger_func(f'  ⏳ Waiting {wait_after_rotation}s for stabilization...')
-                self._wait_and_update_camera(wait_after_rotation)
-            else:
-                self.get_logger_func(f'  ⚠️  Manual mode: please rotate to {angle}° manually')
-                time.sleep(1.0)
-
-            # 采集当前视角
-            image_path = self._capture_current_view(angle)
+            image_path, error_message = self._capture_direction_with_retry(
+                angle=angle,
+                frame_id=frame_id,
+                wait_after_rotation=wait_after_rotation,
+            )
             if image_path is None:
-                self.get_logger_func(f'  ✗ Capture failed at {angle}°')
-                return None
+                panorama_data = {
+                    'node_id': node_id,
+                    'pose': pose,
+                    'timestamp': self.timestamp,
+                    'images': all_paths,
+                    'complete': False,
+                    'failed_angle': angle,
+                    'error_message': error_message or f'Rotation to {angle}° failed',
+                }
+                metadata_path = self.save_metadata(panorama_data)
+                self.get_logger_func(
+                    f'✗ Panorama stopped at {angle}°, partial images kept: {len(all_paths)}'
+                )
+                self.get_logger_func(f'  Partial metadata saved: {metadata_path.name}')
+                return panorama_data
 
             all_paths[angle] = str(image_path)
             self.get_logger_func(f'  ✓ Captured: {image_path.name}')
@@ -180,7 +190,9 @@ class PanoramaCapture:
             'pose': pose,
             'timestamp': self.timestamp,
             'images': all_paths,
-            'complete': True
+            'complete': True,
+            'failed_angle': None,
+            'error_message': '',
         }
 
         metadata_path = self.save_metadata(panorama_data)
@@ -194,6 +206,52 @@ class PanoramaCapture:
         self.get_logger_func(f'{"="*60}\n')
 
         return panorama_data
+
+    def _capture_direction_with_retry(self,
+                                      angle: int,
+                                      frame_id: str,
+                                      wait_after_rotation: float) -> tuple[Optional[Path], str]:
+        """对单个方向执行旋转+采集，带重试。"""
+        last_error = ''
+
+        for rotation_attempt in range(1, self.max_rotation_retries + 1):
+            self._refresh_heading(frame_id)
+            min_rgb_seq, min_depth_seq, _, _ = self.camera.get_frame_state()
+
+            if self.enable_navigation:
+                self.get_logger_func(
+                    f'  🔄 Rotating to {angle}° '
+                    f'(attempt {rotation_attempt}/{self.max_rotation_retries})...'
+                )
+                if not self._rotate_to_angle(angle, frame_id):
+                    last_error = f'Rotation to {angle}° failed'
+                    self.get_logger_func(f'  ✗ {last_error}')
+                    time.sleep(0.5)
+                    continue
+
+                self.get_logger_func(f'  ⏳ Waiting {wait_after_rotation}s for stabilization...')
+                self._wait_and_update_camera(wait_after_rotation)
+            else:
+                self.get_logger_func(f'  ⚠️  Manual mode: please rotate to {angle}° manually')
+                time.sleep(1.0)
+
+            for capture_attempt in range(1, self.max_capture_retries + 1):
+                image_path = self._capture_current_view(
+                    angle,
+                    min_rgb_seq=min_rgb_seq,
+                    min_depth_seq=min_depth_seq,
+                )
+                if image_path is not None:
+                    return image_path, ''
+
+                last_error = f'Capture failed at {angle}°'
+                self.get_logger_func(
+                    f'  ✗ {last_error} '
+                    f'(attempt {capture_attempt}/{self.max_capture_retries})'
+                )
+                time.sleep(0.3)
+
+        return None, last_error
 
     def _navigate_to_pose(self, pose: Dict, frame_id: str) -> bool:
         """
@@ -263,30 +321,32 @@ class PanoramaCapture:
         if not self.navigator:
             return False
 
-        # 获取当前位置，只改变朝向
-        # 注意：这需要从tf获取当前位置，简化起见使用存储的pose
-        current_pose = PoseStamped()
-        current_pose.header.frame_id = frame_id
-        current_pose.header.stamp = self.navigator.get_clock().now().to_msg()
+        self._refresh_heading(frame_id)
+        delta_deg = angle_deg - self.current_heading_deg
+        while delta_deg > 180.0:
+            delta_deg -= 360.0
+        while delta_deg < -180.0:
+            delta_deg += 360.0
 
-        if self.pose:
-            current_pose.pose.position.x = self.pose['x']
-            current_pose.pose.position.y = self.pose['y']
-        else:
-            current_pose.pose.position.x = 0.0
-            current_pose.pose.position.y = 0.0
+        if abs(delta_deg) < 5.0:
+            self.get_logger_func(
+                f'  ✓ Already near {angle_deg}° (current {self.current_heading_deg:.1f}°)'
+            )
+            self.current_heading_deg = float(angle_deg)
+            return True
 
-        current_pose.pose.position.z = 0.0
-
-        # 设置目标朝向
-        theta = math.radians(angle_deg)
-        current_pose.pose.orientation = self._yaw_to_quaternion(theta)
-
-        # 执行旋转（实际上是导航到相同位置但不同朝向）
-        self.navigator.goToPose(current_pose)
+        spin_ok = self.navigator.spin(
+            spin_dist=math.radians(delta_deg),
+            time_allowance=15
+        )
+        if not spin_ok:
+            self.get_logger_func(
+                f'  ✗ Spin request rejected for {delta_deg:.1f}°'
+            )
+            return False
 
         # 等待完成（旋转应该很快）
-        timeout = 10.0
+        timeout = 20.0
         start_time = time.time()
 
         while not self.navigator.isTaskComplete():
@@ -296,7 +356,12 @@ class PanoramaCapture:
                 return False
 
         result = self.navigator.getResult()
-        return result == TaskResult.SUCCEEDED
+        if result == TaskResult.SUCCEEDED:
+            self.current_heading_deg = float(angle_deg)
+            self._refresh_heading(frame_id)
+            return True
+
+        return False
 
     def _wait_and_update_camera(self, duration: float) -> None:
         """
@@ -305,15 +370,26 @@ class PanoramaCapture:
         Args:
             duration: 等待时间（秒）
         """
-        import rclpy
-        start_time = time.time()
+        time.sleep(duration)
 
-        while time.time() - start_time < duration:
-            # 持续处理相机消息，确保缓冲区更新
-            rclpy.spin_once(self.camera, timeout_sec=0.05)
-            time.sleep(0.05)
+    def _refresh_heading(self, frame_id: str) -> None:
+        """尽量用 TF 读取当前真实朝向，失败时保留现值。"""
+        if self.heading_provider is None:
+            return
 
-    def _capture_current_view(self, angle: int) -> Optional[Path]:
+        try:
+            heading = self.heading_provider(frame_id)
+        except Exception as exc:
+            self.get_logger_func(f'  ⚠️  Failed to query current heading: {exc}')
+            return
+
+        if heading is not None:
+            self.current_heading_deg = float(heading)
+
+    def _capture_current_view(self,
+                              angle: int,
+                              min_rgb_seq: int = 0,
+                              min_depth_seq: int = 0) -> Optional[Path]:
         """
         采集当前视角的图像
 
@@ -328,18 +404,14 @@ class PanoramaCapture:
             self.get_logger_func(f'  ✗ Camera not ready')
             return None
 
-        # 关键修复：处理最新的相机消息，确保获取实时图像
-        # 多次spin以确保获取到最新的帧（清空旧帧缓冲）
-        import rclpy
-        for _ in range(10):  # 增加处理次数，确保缓冲区刷新
-            rclpy.spin_once(self.camera, timeout_sec=0.05)
+        if not self.camera.wait_for_new_frames(
+            min_rgb_seq=min_rgb_seq,
+            min_depth_seq=min_depth_seq,
+            timeout=2.0,
+        ):
+            self.get_logger_func('  ⚠️  No fresh frame observed after rotation, using latest available frame')
 
-        # 短暂等待确保最新帧已处理
-        time.sleep(0.3)
-
-        # 再次处理以获取绝对最新的帧
-        for _ in range(5):
-            rclpy.spin_once(self.camera, timeout_sec=0.05)
+        time.sleep(0.15)
 
         # 获取图像
         rgb, depth = self.camera.get_latest_pair()

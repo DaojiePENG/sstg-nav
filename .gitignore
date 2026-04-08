@@ -9,3 +9,8 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+_WBT_WS_SSTG/
+start_tmux.sh
+.vscode/
+.rviz_fix_prefix/
+.codex

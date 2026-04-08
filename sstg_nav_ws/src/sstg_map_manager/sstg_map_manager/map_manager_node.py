@@ -2,6 +2,7 @@
 ROS2 Node for topological map management.
 """
 import logging
+import os
 import yaml
 from pathlib import Path
 
@@ -26,7 +27,10 @@ class MapManagerNode(Node):
         super().__init__('map_manager_node')
         
         # Declare parameters
-        self.declare_parameter('map_file', '/tmp/topological_map.json')
+        default_map = os.path.join(
+            os.path.expanduser('~'),
+            'wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/maps/topological_map_manual.json')
+        self.declare_parameter('map_file', default_map)
         self.declare_parameter('frame_id', 'map')
         self.declare_parameter('graph_type', 'DiGraph')
         
@@ -94,6 +98,7 @@ class MapManagerNode(Node):
             response.message = f"Created node {node.node_id}"
             
             self.get_logger().info(f"Created node {node.node_id}")
+            self.save_map()
             
         except Exception as e:
             response.success = False
@@ -174,6 +179,8 @@ class MapManagerNode(Node):
             response.message = f"Updated semantic for node {node_id}" if success else "Node not found"
             
             self.get_logger().info(response.message)
+            if success:
+                self.save_map()
             
         except Exception as e:
             response.success = False

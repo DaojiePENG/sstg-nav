@@ -10,20 +10,20 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('local_eta', default_value='0.5'),
-        DeclareLaunchArgument('global_eta', default_value='2.0'),
-        DeclareLaunchArgument('local_range', default_value='5.0'),
+        DeclareLaunchArgument('local_eta', default_value='1.5'),
+        DeclareLaunchArgument('global_eta', default_value='4.0'),
+        DeclareLaunchArgument('local_range', default_value='8.0'),
         DeclareLaunchArgument('map_topic', default_value='/map'),
-        DeclareLaunchArgument('info_radius', default_value='1.0'),
+        DeclareLaunchArgument('info_radius', default_value='1.5'),
         DeclareLaunchArgument('global_costmap_topic', default_value='/global_costmap/costmap'),
         DeclareLaunchArgument('frontiers_topic', default_value='/filtered_points'),
         DeclareLaunchArgument('robot_frame', default_value='base_link'),
         DeclareLaunchArgument('global_frame', default_value='map'),
-        DeclareLaunchArgument('filter_rate', default_value='4.0'),
+        DeclareLaunchArgument('filter_rate', default_value='2.0'),
         DeclareLaunchArgument('assignment_period', default_value='0.2'),
         DeclareLaunchArgument('filter_cluster_bandwidth', default_value='0.45'),
         DeclareLaunchArgument('filter_min_frontier_separation', default_value='0.20'),
-        DeclareLaunchArgument('filter_max_frontier_samples', default_value='250'),
+        DeclareLaunchArgument('filter_max_frontier_samples', default_value='150'),
         DeclareLaunchArgument(
             'trace_output_dir',
             default_value=os.path.join(

@@ -7,6 +7,9 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 import os
 from pathlib import Path
+import math
+
+from tf2_ros import Buffer, TransformListener, TransformException
 
 try:
     import sstg_msgs.msg as sstg_msg
@@ -22,6 +25,11 @@ from sstg_perception.camera_subscriber import CameraSubscriber
 from sstg_perception.panorama_capture import PanoramaCapture
 from sstg_perception.vlm_client import VLMClientWithRetry
 from sstg_perception.semantic_extractor import SemanticExtractor, SemanticInfo
+
+DEFAULT_PANORAMA_STORAGE_PATH = (
+    '/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/'
+    'sstg_rrt_explorer/captured_nodes'
+)
 
 
 class PerceptionNode(Node):
@@ -43,7 +51,7 @@ class PerceptionNode(Node):
         self.declare_parameter('api_key', api_key_from_env)
         self.declare_parameter('api_base_url', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
         self.declare_parameter('vlm_model', 'qwen-vl-plus')
-        self.declare_parameter('panorama_storage_path', '/tmp/sstg_perception')
+        self.declare_parameter('panorama_storage_path', DEFAULT_PANORAMA_STORAGE_PATH)
         self.declare_parameter('rgb_topic', '/camera/color/image_raw')
         self.declare_parameter('depth_topic', '/camera/depth/image_raw')
         self.declare_parameter('confidence_threshold', 0.5)
@@ -68,12 +76,18 @@ class PerceptionNode(Node):
             rgb_topic=self.rgb_topic,
             depth_topic=self.depth_topic
         )
+        self.camera_subscriber.start_background_spin()
+
+        # TF 查询：用于读取当前真实朝向，避免仅依赖请求里的目标 yaw
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
         
         # 初始化全景图采集器（传入相机订阅器）
         self.panorama_capture = PanoramaCapture(
             camera_subscriber=self.camera_subscriber,
             storage_path=self.panorama_storage_path,
-            enable_navigation=True  # 启用自动导航
+            enable_navigation=True,  # 启用自动导航
+            heading_provider=self._lookup_current_heading_deg,
         )
         self.panorama_capture.set_logger(self.get_logger().info)
         
@@ -138,6 +152,14 @@ class PerceptionNode(Node):
                 f'pose=({pose["x"]:.2f}, {pose["y"]:.2f}, {pose["theta"]:.1f}°)'
             )
 
+            if not self.camera_subscriber.has_publishers():
+                response.success = False
+                response.error_message = (
+                    f'Camera driver not publishing: {self.rgb_topic}, {self.depth_topic}'
+                )
+                self.get_logger().error(response.error_message)
+                return response
+
             # 检查相机就绪
             if not self.camera_subscriber.is_ready():
                 self.get_logger().warn('Camera not ready, waiting...')
@@ -152,7 +174,7 @@ class PerceptionNode(Node):
                 pose=pose,
                 frame_id=frame_id,
                 navigate=True,  # 启用导航
-                wait_after_rotation=2.0
+                wait_after_rotation=4.0
             )
 
             if panorama_data is None:
@@ -161,13 +183,23 @@ class PerceptionNode(Node):
                 return response
 
             # 构造响应
-            response.success = True
+            images_dict = panorama_data.get('images', {})
+            response.success = bool(panorama_data.get('complete', False))
+            response.error_message = panorama_data.get('error_message', '')
             images_dict = panorama_data['images']
             response.image_paths = [
                 f"{angle}:{path}" for angle, path in sorted(images_dict.items())
             ]
 
-            self.get_logger().info(f'✅ Panorama captured successfully: {len(images_dict)} images')
+            if response.success:
+                self.get_logger().info(
+                    f'✅ Panorama captured successfully: {len(images_dict)} images'
+                )
+            else:
+                self.get_logger().warn(
+                    f'⚠️  Panorama incomplete: {len(images_dict)} images, '
+                    f'error={response.error_message}'
+                )
 
         except Exception as e:
             response.success = False
@@ -180,12 +212,28 @@ class PerceptionNode(Node):
 
     def _quaternion_to_yaw(self, q) -> float:
         """将四元数转换为yaw角度（度）"""
-        import math
         # yaw = atan2(2*(w*z + x*y), 1 - 2*(y^2 + z^2))
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         yaw_rad = math.atan2(siny_cosp, cosy_cosp)
         return math.degrees(yaw_rad)
+
+    def _lookup_current_heading_deg(self, frame_id: str = 'map') -> float | None:
+        """查询机器人当前在目标坐标系下的真实朝向。"""
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                frame_id,
+                'base_footprint',
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.3),
+            )
+        except TransformException as exc:
+            self.get_logger().warn(
+                f'Cannot lookup heading transform {frame_id} -> base_footprint: {exc}'
+            )
+            return None
+
+        return self._quaternion_to_yaw(transform.transform.rotation)
     
     def _annotate_semantic_callback(self, request, response):
         """
