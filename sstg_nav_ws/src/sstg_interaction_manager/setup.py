@@ -14,6 +14,9 @@ setup(
             'docs/MODULE_GUIDE.md',
             'docs/INTERACTION_QuickRef.md',
         ]),
+        ('share/' + package_name + '/launch', [
+            'launch/sstg_full.launch.py',
+        ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

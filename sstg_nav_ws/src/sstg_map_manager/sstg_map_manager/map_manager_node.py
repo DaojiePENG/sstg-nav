@@ -10,7 +10,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, Pose
 
-from sstg_msgs.srv import CreateNode, QuerySemantic, UpdateSemantic, GetNodePose
+from sstg_msgs.srv import CreateNode, QuerySemantic, UpdateSemantic, GetNodePose, GetTopologicalMap
 from sstg_msgs.msg import SemanticData
 
 from .topological_map import TopologicalMap
@@ -68,6 +68,12 @@ class MapManagerNode(Node):
             GetNodePose,
             'get_node_pose',
             self._handle_get_node_pose
+        )
+
+        self.create_service(
+            GetTopologicalMap,
+            'get_topological_map',
+            self._handle_get_topological_map
         )
         
         # Create publisher for visualization
@@ -228,6 +234,25 @@ class MapManagerNode(Node):
         else:
             self.get_logger().error("Failed to save map")
         return success
+
+    def _handle_get_topological_map(self, request: GetTopologicalMap.Request,
+                                    response: GetTopologicalMap.Response) -> GetTopologicalMap.Response:
+        """Handle get topological map service request."""
+        try:
+            import json
+            topology_dict = self.topo_map.to_dict()
+            response.topology_json = json.dumps(topology_dict, ensure_ascii=False)
+            response.success = True
+            node_count = topology_dict.get('metadata', {}).get('node_count', len(topology_dict.get('nodes', [])))
+            response.message = f"Retrieved {node_count} nodes"
+            self.get_logger().info(f"Returned topological map with {node_count} nodes")
+        except Exception as e:
+            response.success = False
+            response.message = f"Error getting topological map: {str(e)}"
+            response.topology_json = "{}"
+            self.get_logger().error(response.message)
+
+        return response
 
 
 def main(args=None):

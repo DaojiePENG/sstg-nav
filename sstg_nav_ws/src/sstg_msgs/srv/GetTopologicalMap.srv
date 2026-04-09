@@ -1,0 +1,12 @@
+# Request: 获取完整拓扑图
+# 空请求表示获取所有节点
+
+---
+
+# Response
+bool success
+string message
+
+# 拓扑图数据（JSON 格式）
+# 格式: {"nodes": [{id, name, pose:{x,y,theta}, semantic_info:{...}}], "edges": [...], "metadata": {...}}
+string topology_json

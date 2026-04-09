@@ -126,7 +126,13 @@ class PerceptionNode(Node):
             'annotate_semantic',
             self._annotate_semantic_callback
         )
-        
+
+        self.create_service(
+            sstg_srv.CheckObjectPresence,
+            'check_object_presence',
+            self._check_object_presence_callback
+        )
+
         self.get_logger().info('Perception Node initialized successfully')
     
     def _capture_panorama_callback(self, request, response):
@@ -305,7 +311,86 @@ class PerceptionNode(Node):
             self.get_logger().error(f'Annotation error: {e}')
         
         return response
-    
+
+    def _check_object_presence_callback(self, request, response):
+        """
+        VLM 物体存在性确认服务回调
+
+        给定一张图和目标物体名，用 VLM 判断图中是否存在该物体。
+        """
+        try:
+            image_path = request.image_path
+            target_object = request.target_object
+
+            self.get_logger().info(
+                f'Checking object presence: "{target_object}" in {image_path}')
+
+            if not Path(image_path).exists():
+                response.found = False
+                response.confidence = 0.0
+                response.description = ''
+                response.error_message = f'Image not found: {image_path}'
+                return response
+
+            if not self.vlm_client:
+                response.found = False
+                response.confidence = 0.0
+                response.description = ''
+                response.error_message = 'VLM client not configured'
+                return response
+
+            prompt = (
+                f'请仔细观察这张图片，判断图中是否有"{target_object}"。\n'
+                f'请用以下 JSON 格式回复：\n'
+                f'{{"found": true/false, "confidence": 0.0-1.0, '
+                f'"description": "简短描述物体位置和状态"}}\n'
+                f'只回复 JSON，不要其他内容。'
+            )
+
+            vlm_response = self.vlm_client.call_semantic_annotation(
+                image_path, prompt=prompt)
+
+            if not vlm_response.success:
+                response.found = False
+                response.confidence = 0.0
+                response.description = ''
+                response.error_message = f'VLM call failed: {vlm_response.error}'
+                return response
+
+            # 解析 VLM 返回的 JSON
+            import json
+            try:
+                content = vlm_response.content.strip()
+                # 处理可能的 markdown 代码块
+                if content.startswith('```'):
+                    content = content.split('\n', 1)[1]
+                    content = content.rsplit('```', 1)[0]
+                result = json.loads(content)
+                response.found = bool(result.get('found', False))
+                response.confidence = float(result.get('confidence', 0.0))
+                response.description = str(result.get('description', ''))
+                response.error_message = ''
+            except (json.JSONDecodeError, ValueError) as e:
+                # VLM 返回非标准 JSON，尝试从文本推断
+                text = vlm_response.content.lower()
+                response.found = '是' in text or 'true' in text or '有' in text
+                response.confidence = 0.5 if response.found else 0.3
+                response.description = vlm_response.content[:200]
+                response.error_message = ''
+
+            self.get_logger().info(
+                f'Object check result: found={response.found}, '
+                f'confidence={response.confidence:.2f}')
+
+        except Exception as e:
+            response.found = False
+            response.confidence = 0.0
+            response.description = ''
+            response.error_message = str(e)
+            self.get_logger().error(f'Object check error: {e}')
+
+        return response
+
     def _publish_semantic_annotation(self, node_id: int, image_path: str,
                                     semantic_info: SemanticInfo) -> None:
         """发布语义标注消息"""

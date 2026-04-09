@@ -52,6 +52,7 @@ install(PROGRAMS
   scripts/node_semantic_collector.py
   scripts/find_and_navigate.py
   scripts/topo_node_viz.py
+  scripts/exploration_action_server.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

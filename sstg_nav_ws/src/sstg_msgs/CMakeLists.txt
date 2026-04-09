@@ -6,6 +6,7 @@ find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(action_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -25,14 +26,23 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ProcessNLPQuery.srv"
   "srv/PlanNavigation.srv"
   "srv/ExecuteNavigation.srv"
+  "srv/GetTopologicalMap.srv"
   "msg/PointArray.msg"
   "msg/GoalTraceEvent.msg"
   "srv/SaveRrtSession.srv"
+  "srv/CheckObjectPresence.srv"
+  "srv/LaunchMode.srv"
+  "srv/GetSystemStatus.srv"
+  "srv/UpdateLLMConfig.srv"
+  "srv/DeleteChatSession.srv"
+  "msg/SystemStatus.msg"
+  "action/ExploreHome.action"
   DEPENDENCIES
     builtin_interfaces
     geometry_msgs
     std_msgs
     sensor_msgs
+    action_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)

@@ -278,8 +278,12 @@ class SemanticMatcher:
                     if tag == chinese_name.lower():
                         return True
         
+        # 子串包含匹配: "雨伞" in "红色雨伞"
+        if entity in tag or tag in entity:
+            return True
+
         return False
-    
+
     def _string_similarity(self, s1: str, s2: str) -> float:
         """
         计算字符串相似度 (0.0-1.0)

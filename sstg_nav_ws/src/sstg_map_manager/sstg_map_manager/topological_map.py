@@ -249,11 +249,11 @@ class TopologicalMap:
     def get_node_count(self) -> int:
         """Get total number of nodes."""
         return len(self.nodes_dict)
-    
+
     def get_edge_count(self) -> int:
         """Get total number of edges."""
         return self.graph.number_of_edges()
-    
+
     def save_to_file(self, file_path: str = None) -> bool:
         """
         Save topological map to JSON file.
