@@ -1,0 +1,8 @@
+string requested_prefix
+---
+bool success
+string message
+string session_id
+string map_yaml
+string map_pgm
+string trace_json
