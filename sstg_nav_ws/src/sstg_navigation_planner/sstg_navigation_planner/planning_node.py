@@ -4,6 +4,8 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 import sys
 import json
 from typing import Optional, Dict
@@ -45,11 +47,13 @@ class PlanningNode(Node):
     
     def __init__(self):
         super().__init__('planning_node')
-        
+
+        self.cb_group = ReentrantCallbackGroup()
+
         # 参数配置
         self.declare_parameter('max_candidates', 5)
         self.declare_parameter('min_match_score', 0.3)
-        self.declare_parameter('map_service_name', '/manage_map')
+        self.declare_parameter('map_service_name', 'query_semantic')
         
         self.max_candidates = self.get_parameter('max_candidates').value
         self.min_match_score = self.get_parameter('min_match_score').value
@@ -77,7 +81,8 @@ class PlanningNode(Node):
             self.create_service(
                 sstg_srv.PlanNavigation,
                 'plan_navigation',
-                self._plan_navigation_callback
+                self._plan_navigation_callback,
+                callback_group=self.cb_group
             )
             self.get_logger().info("✓ PlanNavigation service registered")
         except Exception as e:
@@ -92,32 +97,93 @@ class PlanningNode(Node):
         """
         从地图管理器获取拓扑图
         """
+        import time
         try:
             if self.map_client is None:
-                # 创建客户端
+                # 创建客户端（放入同一 callback group 以支持嵌套调用）
                 self.map_client = self.create_client(
-                    sstg_srv.QuerySemantic,
-                    self.map_service_name
+                    sstg_srv.GetTopologicalMap,
+                    'get_topological_map',
+                    callback_group=self.cb_group
                 )
-                
+
                 # 等待服务可用
                 if not self.map_client.wait_for_service(timeout_sec=5.0):
-                    self.get_logger().error(f"Map service {self.map_service_name} not available")
+                    self.get_logger().error("Map service get_topological_map not available")
                     return None
-            
-            # 发送请求（空查询表示获取整个图）
-            request = sstg_srv.QuerySemantic.Request()
-            request.query = ''  # 空查询表示获取整个图
-            
+
+            # 发送请求
+            request = sstg_srv.GetTopologicalMap.Request()
             future = self.map_client.call_async(request)
-            # 注意：这是异步的，生产环境需要处理
-            
-            return None  # 临时返回 None，实际应处理异步
-            
+
+            # 等待响应（MultiThreadedExecutor + ReentrantCallbackGroup 允许嵌套处理）
+            deadline = time.monotonic() + 5.0
+            while not future.done() and time.monotonic() < deadline:
+                time.sleep(0.05)
+
+            if not future.done():
+                self.get_logger().error("Map query timeout")
+                return None
+
+            result = future.result()
+            if not result or not result.success:
+                self.get_logger().error(f"Map query failed: {result.message if result else 'no result'}")
+                return None
+
+            # 解析 JSON (UI 格式: {nodes: [...], edges: [...], metadata: {...}})
+            import json
+            raw = json.loads(result.topology_json)
+
+            # 转换 UI 格式到 planner 内部格式: {node_id: {name, room_type, pose, semantic_tags, connections, accessible}}
+            topology_dict = self._convert_ui_topology(raw)
+
+            self.get_logger().info(f"✓ Retrieved topological map with {len(topology_dict)} nodes")
+            return topology_dict
+
         except Exception as e:
             self.get_logger().error(f"Error getting topological map: {e}")
             return None
     
+    def _convert_ui_topology(self, raw: dict) -> Dict:
+        """
+        Convert UI-format topology JSON to planner internal format.
+
+        UI format:  {nodes: [{id, name, pose:{x,y,theta}, semantic_info:{room_type, ...}}], edges: [...]}
+        Internal:   {node_id: {name, room_type, pose:{x,y,z}, semantic_tags, connections, accessible}}
+        """
+        # Build adjacency from edges
+        adjacency: Dict[int, list] = {}
+        for edge in raw.get('edges', []):
+            src = edge.get('source', edge.get('from'))
+            tgt = edge.get('target', edge.get('to'))
+            if src is not None and tgt is not None:
+                adjacency.setdefault(src, []).append(tgt)
+                adjacency.setdefault(tgt, []).append(src)
+
+        result = {}
+        for node in raw.get('nodes', []):
+            node_id = node.get('id', -1)
+            pose = node.get('pose', {})
+            sem = node.get('semantic_info') or {}
+
+            semantic_tags = sem.get('semantic_tags', [])
+            room_type = sem.get('room_type', 'unknown')
+
+            result[node_id] = {
+                'name': node.get('name', f'Node_{node_id}'),
+                'room_type': room_type,
+                'pose': {
+                    'x': pose.get('x', 0.0),
+                    'y': pose.get('y', 0.0),
+                    'z': 0.0,
+                },
+                'semantic_tags': semantic_tags,
+                'connections': adjacency.get(node_id, []),
+                'accessible': True,
+            }
+
+        return result
+
     def _plan_navigation_callback(self, request, response):
         """
         处理导航规划请求
@@ -274,10 +340,12 @@ class PlanningNode(Node):
 def main(args=None):
     """主函数"""
     rclpy.init(args=args)
-    
+
     try:
         node = PlanningNode()
-        rclpy.spin(node)
+        executor = MultiThreadedExecutor(num_threads=4)
+        executor.add_node(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
