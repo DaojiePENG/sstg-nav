@@ -110,12 +110,20 @@ function backendLauncherPlugin(): Plugin {
 
   // 已知的 ROS2 节点进程关键字（用于清理残留）
   const ROS2_PROCESS_PATTERNS = [
+    // Nav2 核心
     'controller_server', 'planner_server', 'bt_navigator', 'behavior_server',
     'nav2_amcl/amcl', 'map_server', 'lifecycle_manager', 'ekf_node',
-    'Mcnamu_driver', 'sllidar_node', 'joint_state_publisher', 'robot_state_publisher',
+    // 硬件驱动 + 传感器
+    'Mcnamu_driver', 'sllidar_node', 'base_node_X3', 'imu_filter_madgwick',
+    'joint_state_publisher', 'robot_state_publisher', 'static_transform_publisher',
+    // 相机
+    'component_container.*camera_container',
+    // SSTG 应用节点
     'rosbridge_websocket', 'interaction_manager_node', 'nlp_node', 'perception_node',
     'planning_node', 'executor_node', 'map_manager_node', 'system_manager_node',
-    'exploration_action_server',
+    'exploration_action_server', 'topo_node_viz',
+    // Launch 进程本身
+    'navigation_full.launch.py', 'sstg_full.launch.py',
   ];
 
   function isRunning(): boolean {
@@ -274,6 +282,13 @@ export default defineConfig({
         ws: true,
         rewriteWsOrigin: true,
         rewrite: (path) => path.replace(/^\/rosbridge/, ''),
+      },
+      // WebRTC 信令 WebSocket 代理 — 公网访问时走同一端口
+      '/webrtc': {
+        target: 'ws://localhost:8080',
+        ws: true,
+        rewriteWsOrigin: true,
+        rewrite: (path) => path.replace(/^\/webrtc/, '/ws'),
       },
     },
   },
