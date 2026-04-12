@@ -35,6 +35,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetSystemStatus.srv"
   "srv/UpdateLLMConfig.srv"
   "srv/DeleteChatSession.srv"
+  "srv/RestartNode.srv"
   "msg/SystemStatus.msg"
   "action/ExploreHome.action"
   DEPENDENCIES

@@ -31,6 +31,7 @@ interface RosState {
   deleteChatSession: (sessionId: string) => Promise<any>;
   launchMode: (mode: string) => Promise<any>;
   getSystemStatus: () => Promise<any>;
+  restartNode: (nodeName: string, killDuplicates: boolean) => Promise<any>;
   updateLLMConfig: (baseUrl: string, apiKey: string, model: string) => Promise<any>;
 }
 
@@ -212,7 +213,7 @@ export const useRosStore = create<RosState>((set, get) => ({
               memory: result.memory_percent ?? 0,
               devices: parseDeviceStatus(result.device_status || []),
               nodeCount: result.active_node_count ?? 0,
-              activeNodes: [],
+              activeNodes: result.active_nodes || [],
             }
           });
         }
@@ -333,14 +334,41 @@ export const useRosStore = create<RosState>((set, get) => ({
         {},
         (result: any) => {
           set(state => ({
-            systemStatus: state.systemStatus ? {
+            systemStatus: {
+              // 保留已有的 cpu/memory/devices/nodeCount（来自 topic 推送）
+              mode: 'idle',
+              cpu: 0,
+              memory: 0,
+              devices: [],
+              nodeCount: 0,
+              activeNodes: [],
               ...state.systemStatus,
+              // 用 service 返回的数据覆盖 activeNodes 和 mode
               activeNodes: result.active_nodes || [],
-              mode: result.mode || state.systemStatus.mode,
-            } : null,
+              mode: result.mode || state.systemStatus?.mode || 'idle',
+            },
           }));
           resolve(result);
         },
+        (error: any) => reject(error),
+      );
+    });
+  },
+
+  restartNode: (nodeName: string, killDuplicates: boolean) => {
+    return new Promise((resolve, reject) => {
+      const { ros, isConnected } = get();
+      if (!ros || !isConnected) return reject("ROS not connected");
+
+      const client = new ROSLIB.Service({
+        ros,
+        name: "/system/restart_node",
+        serviceType: "sstg_msgs/srv/RestartNode"
+      });
+
+      client.callService(
+        { node_name: nodeName, kill_duplicates: killDuplicates },
+        (result: any) => resolve(result),
         (error: any) => reject(error),
       );
     });

@@ -70,6 +70,11 @@ class SystemManagerNode(Node):
             'system/get_status',
             self._get_status_callback,
         )
+        self.create_service(
+            sstg_srv.RestartNode,
+            'system/restart_node',
+            self._restart_node_callback,
+        )
 
         # Publishers
         self._status_pub = self.create_publisher(
@@ -156,6 +161,131 @@ class SystemManagerNode(Node):
                 response.active_nodes = []
         except Exception:
             response.active_nodes = []
+
+        return response
+
+    # 允许单独重启的节点白名单（仅 SSTG 核心）
+    _RESTARTABLE_NODES = {
+        'interaction_manager_node': {
+            'package': 'sstg_interaction_manager',
+            'executable': 'interaction_manager_node',
+        },
+        'map_manager_node': {
+            'package': 'sstg_map_manager',
+            'executable': 'map_manager_node',
+        },
+        'nlp_node': {
+            'package': 'sstg_nlp_interface',
+            'executable': 'nlp_node',
+        },
+        'planning_node': {
+            'package': 'sstg_navigation_planner',
+            'executable': 'planning_node',
+        },
+        'executor_node': {
+            'package': 'sstg_navigation_executor',
+            'executable': 'executor_node',
+        },
+        'perception_node': {
+            'package': 'sstg_perception',
+            'executable': 'perception_node',
+        },
+        'exploration_action_server': {
+            'package': 'sstg_rrt_explorer',
+            'executable': 'exploration_action_server.py',
+        },
+        'webrtc_camera_bridge': {
+            'package': 'sstg_system_manager',
+            'executable': 'webrtc_camera_bridge',
+        },
+        'system_manager_node': {
+            'package': 'sstg_system_manager',
+            'executable': 'system_manager_node',
+        },
+        'topo_node_viz': {
+            'package': 'sstg_rrt_explorer',
+            'executable': 'topo_node_viz.py',
+        },
+        'rosbridge_websocket': None,  # 不支持单独重启，由 launch 管理
+    }
+
+    def _restart_node_callback(self, request, response):
+        node_name = request.node_name.strip().lstrip('/')
+        kill_duplicates = request.kill_duplicates
+        self.get_logger().info(
+            f'RestartNode request: {node_name} (kill_duplicates={kill_duplicates})')
+
+        # 白名单检查
+        if node_name not in self._RESTARTABLE_NODES:
+            response.success = False
+            response.message = (
+                f'节点 {node_name} 不支持单独重启。'
+                '仅 SSTG 核心节点可重启，Nav2/硬件节点请使用模式切换。')
+            response.killed_pids = []
+            return response
+
+        node_cfg = self._RESTARTABLE_NODES[node_name]
+        if node_cfg is None:
+            response.success = False
+            response.message = f'节点 {node_name} 由 launch 文件管理，不支持单独重启'
+            response.killed_pids = []
+            return response
+
+        # 查找所有匹配 PID
+        killed_pids = []
+        try:
+            result = subprocess.run(
+                ['pgrep', '-f', node_cfg['executable']],
+                capture_output=True, text=True, timeout=3,
+            )
+            if result.returncode == 0:
+                pids = [p.strip() for p in result.stdout.strip().split('\n') if p.strip()]
+            else:
+                pids = []
+        except Exception:
+            pids = []
+
+        # Kill 进程
+        for pid in pids:
+            try:
+                os.kill(int(pid), signal.SIGTERM)
+                killed_pids.append(pid)
+                self._publish_log(f'已终止 {node_name} (PID {pid})')
+            except (ProcessLookupError, ValueError):
+                pass
+
+        # 等待进程退出
+        if killed_pids:
+            time.sleep(3.0)
+            # 确认是否还在运行，强杀残留
+            for pid in killed_pids:
+                try:
+                    os.kill(int(pid), 0)  # 检查进程是否存在
+                    os.kill(int(pid), signal.SIGKILL)
+                    self._publish_log(f'强制终止 {node_name} (PID {pid})')
+                except (ProcessLookupError, ValueError):
+                    pass
+            time.sleep(1.0)
+
+        # 重启一个新实例
+        try:
+            cmd = ['ros2', 'run', node_cfg['package'], node_cfg['executable']]
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                preexec_fn=os.setsid,
+            )
+            self._publish_log(f'✔ 已重启 {node_name}')
+            response.success = True
+            response.message = (
+                f'已重启 {node_name}'
+                f'（终止 {len(killed_pids)} 个旧实例）')
+            response.killed_pids = killed_pids
+        except Exception as e:
+            response.success = False
+            response.message = f'重启 {node_name} 失败: {e}'
+            response.killed_pids = killed_pids
 
         return response
 

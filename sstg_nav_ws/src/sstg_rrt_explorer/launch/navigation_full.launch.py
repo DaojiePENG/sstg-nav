@@ -88,21 +88,10 @@ def generate_launch_description():
         ],
     )
 
-    # ── 阶段 4: 拓扑管理 + 可视化 (15s) ──
+    # ── 阶段 4: 拓扑可视化 (15s) ──
+    # 注意: map_manager_node 已在 sstg_full.launch.py 中启动，此处不再重复
     topo_map_file = os.path.join(
         pkg_share, 'maps', 'topological_map_manual.json')
-
-    map_manager = TimerAction(
-        period=15.0,
-        actions=[
-            Node(
-                package='sstg_map_manager',
-                executable='map_manager_node',
-                name='map_manager_node',
-                output='screen',
-            ),
-        ],
-    )
 
     topo_viz = TimerAction(
         period=15.0,
@@ -122,6 +111,5 @@ def generate_launch_description():
         slam_localization,
         camera,
         nav2,
-        map_manager,
         topo_viz,
     ])
