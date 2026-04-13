@@ -27,8 +27,8 @@ from sstg_perception.vlm_client import VLMClientWithRetry
 from sstg_perception.semantic_extractor import SemanticExtractor, SemanticInfo
 
 DEFAULT_PANORAMA_STORAGE_PATH = (
-    '/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/'
-    'sstg_rrt_explorer/captured_nodes'
+    os.path.expanduser('~/wbt_ws/sstg-nav/sstg_nav_ws/src/')
+    + 'sstg_rrt_explorer/captured_nodes'
 )
 
 

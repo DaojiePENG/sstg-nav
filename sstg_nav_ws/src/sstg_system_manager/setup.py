@@ -15,6 +15,7 @@ setup(
     entry_points={
         'console_scripts': [
             'system_manager_node = sstg_system_manager.system_manager_node:main',
+            'webrtc_camera_bridge = sstg_system_manager.webrtc_camera_bridge:main',
         ],
     },
 )

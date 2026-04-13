@@ -83,6 +83,13 @@ def generate_launch_description():
         output='screen',
     )
 
+    webrtc_camera_bridge = Node(
+        package='sstg_system_manager',
+        executable='webrtc_camera_bridge',
+        name='webrtc_camera_bridge',
+        output='screen',
+    )
+
     # --- T=5s: 编排层 ---
 
     interaction_manager = Node(
@@ -109,6 +116,7 @@ def generate_launch_description():
                 executor_node,
                 perception_node,
                 exploration_action_server,
+                webrtc_camera_bridge,
             ],
         ),
 

@@ -10,7 +10,7 @@ rgb_topic: "/camera/rgb/image_raw"
 depth_topic: "/camera/depth/image_raw"
 
 # Storage Configuration
-panorama_storage_path: "/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes"
+panorama_storage_path: "~/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes"
 image_format: "png"  # png or jpg
 
 # VLM Configuration

@@ -14,3 +14,27 @@ start_tmux.sh
 .vscode/
 .rviz_fix_prefix/
 .codex
+.superpowers/
+docs/
+SSTG_RTABMap_Architecture_Comparison.md
+
+# Core dumps
+core.*
+
+# Python egg-info
+*.egg-info/
+
+# AI exploration notes (not project docs)
+ARCHITECTURE_QUICK_REFERENCE.md
+CODEBASE_EXPLORATION_INDEX.md
+CODEBASE_EXPLORATION_REPORT.md
+EXPLORATION_SUMMARY.md
+SSTG_Quick_Reference.md
+sstg_nav_ws/src/sstg_rrt_explorer/NODE_ARCHITECTURE.txt
+sstg_nav_ws/src/sstg_rrt_explorer/PACKAGE_ANALYSIS.md
+sstg_nav_ws/src/sstg_rrt_explorer/QUICK_REFERENCE.md
+sstg_nav_ws/src/sstg_rrt_explorer/README_EXPLORATION.md
+sstg_ui_app/SCROLL_BEHAVIOR_ANALYSIS.md
+
+# External vendor packages (submodules or separate repos)
+yahboomcar_ws/

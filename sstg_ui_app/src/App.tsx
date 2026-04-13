@@ -2,13 +2,16 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRosStore } from "./store/rosStore";
 import { useChatStore, getUsername } from "./store/chatStore";
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
-import { Map as MapIcon, MessageSquare, Activity, Power, Lock, LogOut } from "lucide-react";
+import { Map as MapIcon, MessageSquare, Activity, Power, Lock, LogOut, BookOpen, HelpCircle } from "lucide-react";
 import { cn } from "./lib/utils";
 import ChatView from "./components/ChatView";
 import MapView from "./components/MapView";
 import RobotView from "./components/RobotView";
+import ArchitectureView from "./components/ArchitectureView";
+import GuideView from "./components/GuideView";
 import UsernameModal from "./components/UsernameModal";
 import appLogo from "./assets/LOGO.png";
+import FloatingPiPManager from "./components/vision/FloatingPiPManager";
 
 /* ── 访问密钥门禁 ── */
 const ACCESS_KEY = "sstg2026";   // 共享密钥，改这里即可
@@ -224,6 +227,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarLink to="/" icon={MessageSquare} />
           <SidebarLink to="/map" icon={MapIcon} />
           <SidebarLink to="/robot" icon={Activity} />
+          <SidebarLink to="/guide" icon={HelpCircle} />
+          <SidebarLink to="/arch" icon={BookOpen} />
         </div>
         <div className="mt-auto mb-2 flex flex-col items-center gap-3">
           {/* 电源按钮：短按=正常开关，长按2s=强制清杀 */}
@@ -279,9 +284,13 @@ function App() {
             <Route path="/" element={<ChatView />} />
             <Route path="/map" element={<MapView />} />
             <Route path="/robot" element={<RobotView />} />
+            <Route path="/guide" element={<GuideView />} />
+            <Route path="/arch" element={<ArchitectureView />} />
           </Routes>
         </AppLayout>
       </BrowserRouter>
+      {/* PiP 浮动窗口 — Portal 到 body，不受路由切换影响 */}
+      <FloatingPiPManager />
     </AuthGate>
   );
 }

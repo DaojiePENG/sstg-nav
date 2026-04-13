@@ -9,9 +9,11 @@ from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration
 from launch.actions import DeclareLaunchArgument
 
+import os
+
 DEFAULT_PANORAMA_STORAGE_PATH = (
-    '/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/'
-    'sstg_rrt_explorer/captured_nodes'
+    os.path.expanduser('~/wbt_ws/sstg-nav/sstg_nav_ws/src/')
+    + 'sstg_rrt_explorer/captured_nodes'
 )
 
 

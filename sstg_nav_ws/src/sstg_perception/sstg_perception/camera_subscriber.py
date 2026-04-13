@@ -6,13 +6,51 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from collections import deque
 from typing import Callable, Optional, Tuple
 import threading
 import time
+
+
+def ros_image_to_cv2(msg: Image, desired_encoding: str = 'passthrough') -> np.ndarray:
+    """
+    纯 numpy 实现的 sensor_msgs/Image → OpenCV 转换。
+    替代 cv_bridge.CvBridge.imgmsg_to_cv2()，避免 NumPy 2.x 兼容问题。
+    """
+    encoding = msg.encoding.lower()
+
+    # 确定 dtype 和 channels
+    if encoding in ('bgr8', 'rgb8', '8uc3'):
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
+    elif encoding in ('bgra8', 'rgba8', '8uc4'):
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 4)
+    elif encoding in ('mono8', '8uc1'):
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width)
+    elif encoding in ('16uc1', 'mono16'):
+        img = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.width)
+    elif encoding in ('32fc1',):
+        img = np.frombuffer(msg.data, dtype=np.float32).reshape(msg.height, msg.width)
+    else:
+        # 默认按 bgr8
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
+
+    # 根据 desired_encoding 转换
+    if desired_encoding == 'passthrough':
+        return img.copy()
+    elif desired_encoding == 'bgr8':
+        if encoding == 'rgb8':
+            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        elif encoding == 'rgba8':
+            return cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+        elif encoding == 'bgra8':
+            return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        elif encoding in ('mono8', '8uc1'):
+            return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        return img.copy()
+
+    return img.copy()
 
 
 class CameraSubscriber(Node):
@@ -36,10 +74,9 @@ class CameraSubscriber(Node):
             image_buffer_size: 图像缓冲区大小
         """
         super().__init__('camera_subscriber')
-        
+
         self.rgb_topic = rgb_topic
         self.depth_topic = depth_topic
-        self.bridge = CvBridge()
         
         self.rgb_image = None
         self.depth_image = None
@@ -87,7 +124,7 @@ class CameraSubscriber(Node):
     def _rgb_callback(self, msg: Image) -> None:
         """RGB 图像回调"""
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            cv_image = ros_image_to_cv2(msg, desired_encoding='bgr8')
             with self.lock:
                 self.rgb_image = cv_image
                 self.rgb_stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
@@ -103,7 +140,7 @@ class CameraSubscriber(Node):
     def _depth_callback(self, msg: Image) -> None:
         """深度图回调"""
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+            cv_image = ros_image_to_cv2(msg, desired_encoding='passthrough')
             with self.lock:
                 self.depth_image = cv_image
                 self.depth_stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec

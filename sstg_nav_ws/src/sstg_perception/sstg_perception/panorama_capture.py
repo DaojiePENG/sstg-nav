@@ -88,19 +88,37 @@ class PanoramaCapture:
         self.current_heading_deg = 0.0
         self.lock = threading.Lock()
 
-        # 导航器（在日志函数初始化后）
+        # 导航器 — 延迟初始化（只在首次需要时创建）
+        # 避免在 Nav2 未启动时创建 BasicNavigator 导致节点崩溃
         self.navigator = None
-        if self.enable_navigation:
-            try:
-                self.navigator = BasicNavigator()
-                self.get_logger_func(f'✓ Navigation enabled (Nav2)')
-            except Exception as e:
-                self.get_logger_func(f'✗ Failed to initialize navigator: {e}')
-                self.enable_navigation = False
+        self._navigator_init_attempted = False
 
     def set_logger(self, logger_func: Callable) -> None:
         """设置日志函数"""
         self.get_logger_func = logger_func
+
+    def _ensure_navigator(self) -> bool:
+        """
+        延迟初始化 BasicNavigator。
+        仅在真正需要导航时才创建，避免 Nav2 未启动时崩溃。
+        """
+        if self.navigator is not None:
+            return True
+        if not self.enable_navigation:
+            return False
+        if self._navigator_init_attempted:
+            return False  # 上次已失败，不再重试（可调 restart_node 后重新尝试）
+
+        self._navigator_init_attempted = True
+        try:
+            self.navigator = BasicNavigator()
+            self.get_logger_func('✓ Navigation enabled (Nav2 BasicNavigator)')
+            return True
+        except Exception as e:
+            self.get_logger_func(f'✗ Failed to initialize navigator: {e}')
+            self.get_logger_func('  Nav2 may not be running. Navigation disabled for this session.')
+            self.enable_navigation = False
+            return False
 
     def capture_at_pose(self,
                        node_id: int,
@@ -141,11 +159,14 @@ class PanoramaCapture:
 
         # 步骤1: 导航到目标点（如果需要）
         if navigate and self.enable_navigation:
-            self.get_logger_func(f'\n[Step 1/3] 🚗 Navigating to target pose...')
-            if not self._navigate_to_pose(pose, frame_id):
-                self.get_logger_func(f'✗ Navigation failed')
-                return None
-            self.get_logger_func(f'✓ Arrived at target')
+            if self._ensure_navigator():
+                self.get_logger_func(f'\n[Step 1/3] 🚗 Navigating to target pose...')
+                if not self._navigate_to_pose(pose, frame_id):
+                    self.get_logger_func(f'✗ Navigation failed')
+                    return None
+                self.get_logger_func(f'✓ Arrived at target')
+            else:
+                self.get_logger_func(f'\n[Step 1/3] ⚠️  Navigator init failed, capturing at current location')
         else:
             if navigate and not self.enable_navigation:
                 self.get_logger_func(f'\n[Step 1/3] ⚠️  Navigation disabled, capturing at current location')
@@ -512,4 +533,8 @@ class PanoramaCapture:
     def shutdown(self):
         """关闭导航器"""
         if self.navigator:
-            self.navigator.lifecycleShutdown()
+            try:
+                self.navigator.lifecycleShutdown()
+            except Exception:
+                pass
+            self.navigator = None
