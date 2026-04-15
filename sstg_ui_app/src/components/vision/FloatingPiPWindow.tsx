@@ -58,8 +58,8 @@ function FloatingPiPWindow() {
   return (
     <Rnd
       position={pipPosition}
-      size={pipMinimized ? { width: 320, height: 36 } : pipSize}
-      minWidth={pipMinimized ? 320 : dynMinW}
+      size={pipMinimized ? { width: 480, height: 36 } : pipSize}
+      minWidth={pipMinimized ? 480 : dynMinW}
       minHeight={pipMinimized ? 36 : dynMinH}
       bounds="window"
       dragHandleClassName="pip-drag-handle"

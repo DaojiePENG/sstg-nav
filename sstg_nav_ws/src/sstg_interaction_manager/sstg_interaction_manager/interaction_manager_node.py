@@ -32,7 +32,7 @@ from sstg_msgs.srv import (
     CaptureImage,
     CheckObjectPresence,
 )
-from sstg_msgs.msg import NavigationFeedback, TaskStatus
+from sstg_msgs.msg import NavigationFeedback, TaskStatus, ObjectSearchTrace
 from sstg_msgs.action import ExploreHome
 
 
@@ -65,6 +65,7 @@ class InteractionManagerNode(Node):
 
         # --- Publisher: 实时状态推送 ---
         self.task_status_pub = self.create_publisher(TaskStatus, 'task_status', 10)
+        self.search_trace_pub = self.create_publisher(ObjectSearchTrace, 'object_search_trace', 10)
 
         # --- Services: UI 调用入口 ---
         self.create_service(
@@ -111,6 +112,8 @@ class InteractionManagerNode(Node):
         self.search_index = 0
         self.search_images = []
         self.search_image_index = 0
+        self.search_visited_nodes = []
+        self.search_failed_nodes = []
 
         # --- 消息队列 (Phase 10) ---
         self._pending_queue = []  # [{text_input, context, session_id, sender_name, task_id}]
@@ -169,6 +172,30 @@ class InteractionManagerNode(Node):
         """进入失败状态并推送"""
         self._set_state(TaskState.FAILED)
         self._publish_status(reason, progress=0.0)
+
+    def _publish_search_trace(self, phase: str, event_type: str, message: str, **kwargs):
+        """发布结构化搜索追踪事件到 /object_search_trace"""
+        msg = ObjectSearchTrace()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.task_id = self.current_task_id
+        msg.target_object = self.search_target
+        msg.phase = phase
+        msg.event_type = event_type
+        msg.message = message
+        msg.current_node_id = kwargs.get('current_node_id', -1)
+        msg.candidate_node_ids = list(self.search_candidates)
+        msg.visited_node_ids = list(self.search_visited_nodes)
+        msg.failed_node_ids = list(self.search_failed_nodes)
+        msg.current_candidate_index = self.search_index
+        msg.total_candidates = len(self.search_candidates)
+        msg.current_image_index = kwargs.get('current_image_index', 0)
+        msg.total_images = kwargs.get('total_images', 0)
+        msg.current_angle_deg = kwargs.get('current_angle_deg', 0)
+        msg.current_image_path = kwargs.get('current_image_path', '')
+        msg.found = kwargs.get('found', False)
+        msg.confidence = kwargs.get('confidence', 0.0)
+        msg.evidence_image_path = kwargs.get('evidence_image_path', '')
+        self.search_trace_pub.publish(msg)
 
     def _watchdog_tick(self):
         """定期检查任务是否卡住，提供心跳反馈和超时保护"""
@@ -794,6 +821,8 @@ class InteractionManagerNode(Node):
             self.search_index = 0
             self.search_images = []
             self.search_image_index = 0
+            self.search_visited_nodes = []
+            self.search_failed_nodes = []
 
         self._set_state(TaskState.SEARCHING)
         self._publish_status(
@@ -846,6 +875,8 @@ class InteractionManagerNode(Node):
 
         self._publish_status(
             f'找到 {total} 个候选位置，开始搜索...', progress=0.15)
+        self._publish_search_trace('planning', 'plan_ready',
+            f'找到 {total} 个候选位置')
         self._navigate_to_search_node()
 
     def _on_global_search_plan_done(self, future):
@@ -888,6 +919,8 @@ class InteractionManagerNode(Node):
                 f'我把 {len(candidates)} 个位置都看了一遍，没有找到"{target}"。'
                 f'可能它不在当前地图范围内，你可以试试探索更多区域~',
                 progress=1.0)
+            self._publish_search_trace('completed', 'completed_not_found',
+                f'所有 {len(candidates)} 个位置搜索完毕，未找到 "{target}"')
             return
 
         node_id = candidates[idx]
@@ -896,6 +929,8 @@ class InteractionManagerNode(Node):
         self._publish_status(
             f'正在前往第 {idx + 1}/{total} 个位置 (节点{node_id}) 查找 "{target}"...',
             progress=0.2 + 0.6 * (idx / total))
+        self._publish_search_trace('navigating', 'navigate_start',
+            f'前往节点 {node_id}', current_node_id=node_id)
 
         # 获取位姿
         pose_req = GetNodePose.Request()
@@ -914,13 +949,21 @@ class InteractionManagerNode(Node):
             # 跳过此节点，继续下一个
             self.get_logger().warn(f'搜索节点位姿获取失败: {e}')
             with self._lock:
+                node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
+                self.search_failed_nodes.append(node_id)
                 self.search_index += 1
+            self._publish_search_trace('navigating', 'node_skip',
+                f'节点 {node_id} 位姿获取失败，跳过', current_node_id=node_id)
             self._navigate_to_search_node()
             return
 
         if result is None or not result.success:
             with self._lock:
+                node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
+                self.search_failed_nodes.append(node_id)
                 self.search_index += 1
+            self._publish_search_trace('navigating', 'node_skip',
+                f'节点 {node_id} 位姿获取失败，跳过', current_node_id=node_id)
             self._navigate_to_search_node()
             return
 
@@ -964,6 +1007,8 @@ class InteractionManagerNode(Node):
         self._set_state(TaskState.CHECKING)
         self._publish_status(
             f'已到达节点 {node_id}，正在拍照检查 "{target}"...')
+        self._publish_search_trace('capturing', 'navigate_reached',
+            f'已到达节点 {node_id}', current_node_id=node_id)
 
         from geometry_msgs.msg import PoseStamped
         capture_req = CaptureImage.Request()
@@ -983,14 +1028,22 @@ class InteractionManagerNode(Node):
         except Exception as e:
             self.get_logger().warn(f'拍照失败: {e}，跳过此节点')
             with self._lock:
+                node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
+                self.search_failed_nodes.append(node_id)
                 self.search_index += 1
+            self._publish_search_trace('navigating', 'node_skip',
+                f'节点 {node_id} 拍照失败，跳过', current_node_id=node_id)
             self._navigate_to_search_node()
             return
 
         if result is None or not result.success or not result.image_paths:
             self.get_logger().warn('拍照失败或无图片，跳过此节点')
             with self._lock:
+                node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
+                self.search_failed_nodes.append(node_id)
                 self.search_index += 1
+            self._publish_search_trace('navigating', 'node_skip',
+                f'节点 {node_id} 无图片，跳过', current_node_id=node_id)
             self._navigate_to_search_node()
             return
 
@@ -1006,6 +1059,11 @@ class InteractionManagerNode(Node):
         with self._lock:
             self.search_images = image_paths
             self.search_image_index = 0
+            node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
+
+        self._publish_search_trace('checking', 'capture_ready',
+            f'节点 {node_id} 拍照完成，{len(image_paths)} 张图待检查',
+            current_node_id=node_id, total_images=len(image_paths))
 
         self._check_next_image()
 
@@ -1023,15 +1081,24 @@ class InteractionManagerNode(Node):
             # 当前节点所有图片都检查完，未找到
             with self._lock:
                 node_id = self.search_candidates[self.search_index]
+                self.search_visited_nodes.append(node_id)
                 self.search_index += 1
             self._publish_status(
                 f'节点 {node_id} 未找到 "{target}"，继续搜索...')
+            self._publish_search_trace('navigating', 'node_miss',
+                f'节点 {node_id} 未找到 "{target}"', current_node_id=node_id)
             self._navigate_to_search_node()
             return
 
         image_path = images[idx]
         self._publish_status(
             f'正在检查图片 {idx + 1}/{len(images)}...')
+        with self._lock:
+            node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
+        self._publish_search_trace('checking', 'image_check_start',
+            f'检查图片 {idx + 1}/{len(images)}',
+            current_node_id=node_id, current_image_index=idx,
+            total_images=len(images), current_image_path=image_path)
 
         check_req = CheckObjectPresence.Request()
         check_req.image_path = image_path
@@ -1059,16 +1126,25 @@ class InteractionManagerNode(Node):
             with self._lock:
                 node_id = self.search_candidates[self.search_index]
                 target = self.search_target
+                image_path = self.search_images[self.search_image_index] if self.search_image_index < len(self.search_images) else ''
 
             self._set_state(TaskState.COMPLETED)
             desc = result.description or ''
             self._publish_status(
                 f'找到了! "{target}" 在节点 {node_id}。{desc}',
                 progress=1.0)
+            self._publish_search_trace('completed', 'found',
+                f'在节点 {node_id} 找到 "{target}"',
+                current_node_id=node_id, found=True,
+                confidence=result.confidence,
+                evidence_image_path=image_path)
         else:
             # 未找到，检查下一张图
             with self._lock:
+                node_id = self.search_candidates[self.search_index] if self.search_index < len(self.search_candidates) else -1
                 self.search_image_index += 1
+            self._publish_search_trace('checking', 'image_check_miss',
+                f'图片未命中', current_node_id=node_id)
             self._check_next_image()
 
     # ========================================================================

@@ -37,6 +37,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/DeleteChatSession.srv"
   "srv/RestartNode.srv"
   "msg/SystemStatus.msg"
+  "msg/ObjectSearchTrace.msg"
+  "msg/ViewpointData.msg"
   "action/ExploreHome.action"
   DEPENDENCIES
     builtin_interfaces

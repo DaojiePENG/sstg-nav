@@ -148,17 +148,14 @@ class SystemManagerNode(Node):
             f'{"OK" if os.path.exists(d["path"]) else "MISSING"}:{d["name"]}:{d["path"]}'
             for d in DEVICES.values()
         ]
-        # 获取活跃节点列表
+        # 获取活跃节点列表（直接走 DDS 发现，不依赖 ros2 daemon）
         try:
-            result = subprocess.run(
-                ['ros2', 'node', 'list'],
-                capture_output=True, text=True, timeout=3,
-            )
-            if result.returncode == 0:
-                nodes = [n.strip() for n in result.stdout.strip().split('\n') if n.strip()]
-                response.active_nodes = nodes
-            else:
-                response.active_nodes = []
+            names_and_ns = self.get_node_names_and_namespaces()
+            nodes = list(set(
+                f'{ns.rstrip("/")}/{name}' if ns != '/' else f'/{name}'
+                for name, ns in names_and_ns
+            ))
+            response.active_nodes = nodes
         except Exception:
             response.active_nodes = []
 
@@ -291,6 +288,27 @@ class SystemManagerNode(Node):
 
     # ── Launch Management ─────────────────────────────────────
 
+    def _kill_stale_launches(self, launch_file: str):
+        """杀掉同名 launch 文件的残留进程组（防止 system_manager 重启后丢失旧进程引用）"""
+        try:
+            result = subprocess.run(
+                ['pgrep', '-f', f'ros2 launch.*{launch_file}'],
+                capture_output=True, text=True, timeout=3,
+            )
+            if result.returncode != 0:
+                return
+            for pid_str in result.stdout.strip().split('\n'):
+                pid = int(pid_str.strip())
+                try:
+                    pgid = os.getpgid(pid)
+                    os.killpg(pgid, signal.SIGTERM)
+                    self._publish_log(f'清理残留 launch 进程组 (pgid={pgid})')
+                    self.get_logger().info(f'Killed stale launch pgid {pgid}')
+                except (ProcessLookupError, PermissionError):
+                    pass
+        except Exception as e:
+            self.get_logger().warn(f'_kill_stale_launches: {e}')
+
     def _start_mode(self, mode: str) -> tuple:
         cfg = LAUNCH_MODES[mode]
         cmd = [
@@ -300,6 +318,11 @@ class SystemManagerNode(Node):
         ]
         self.get_logger().info(f'Starting {mode}: {" ".join(cmd)}')
         self._publish_log(f'Starting {mode} mode: {cfg["description"]}')
+
+        # 清理同名 launch 残留（即使 self._process 为 None）
+        self._kill_stale_launches(cfg['launch_file'])
+        self._cleanup_orphaned_processes()
+        time.sleep(1.0)
 
         try:
             with self._process_lock:
@@ -338,7 +361,13 @@ class SystemManagerNode(Node):
     def _stop_current(self) -> tuple:
         with self._process_lock:
             if self._process is None or self._process.poll() is not None:
+                # 即使没有跟踪到进程，也尝试清理残留 launch
+                for cfg in LAUNCH_MODES.values():
+                    self._kill_stale_launches(cfg['launch_file'])
+                orphans = self._cleanup_orphaned_processes()
                 self._current_mode = 'idle'
+                if orphans > 0:
+                    return True, f'No tracked process, cleaned {orphans} orphans'
                 return True, 'No active process'
 
             pid = self._process.pid
@@ -426,35 +455,32 @@ class SystemManagerNode(Node):
             for d in DEVICES.values()
         ]
 
-        # 节点数 (快速检查) + 上线检测
+        # 节点数 (直接走 DDS 发现，不依赖 ros2 daemon) + 上线检测
         try:
-            result = subprocess.run(
-                ['ros2', 'node', 'list'],
-                capture_output=True, text=True, timeout=2,
-            )
-            if result.returncode == 0:
-                nodes = [n for n in result.stdout.strip().split('\n') if n.strip()]
-                msg.active_node_count = len(nodes)
+            names_and_ns = self.get_node_names_and_namespaces()
+            nodes = list(set(
+                f'{ns.rstrip("/")}/{name}' if ns != '/' else f'/{name}'
+                for name, ns in names_and_ns
+            ))
+            msg.active_node_count = len(nodes)
 
-                # 检测新上线的节点
-                current_nodes = set(nodes)
-                new_nodes = current_nodes - self._known_nodes
-                for node_name in sorted(new_nodes):
-                    label = self._sstg_core_nodes.get(node_name, '')
-                    if label:
-                        self._publish_log(f'✔ {label} ({node_name}) 已启动')
-                    elif node_name.startswith('/'):
-                        self._publish_log(f'✔ {node_name} 已启动')
-                self._known_nodes = current_nodes
+            # 检测新上线的节点
+            current_nodes = set(nodes)
+            new_nodes = current_nodes - self._known_nodes
+            for node_name in sorted(new_nodes):
+                label = self._sstg_core_nodes.get(node_name, '')
+                if label:
+                    self._publish_log(f'✔ {label} ({node_name}) 已启动')
+                elif node_name.startswith('/'):
+                    self._publish_log(f'✔ {node_name} 已启动')
+            self._known_nodes = current_nodes
 
-                # 所有核心节点就绪时通知一次
-                if not self._startup_announced:
-                    ready = set(self._sstg_core_nodes.keys()) & current_nodes
-                    if len(ready) >= len(self._sstg_core_nodes):
-                        self._publish_log('✔ SSTG 所有核心节点已就绪，系统准备完毕')
-                        self._startup_announced = True
-            else:
-                msg.active_node_count = 0
+            # 所有核心节点就绪时通知一次
+            if not self._startup_announced:
+                ready = set(self._sstg_core_nodes.keys()) & current_nodes
+                if len(ready) >= len(self._sstg_core_nodes):
+                    self._publish_log('✔ SSTG 所有核心节点已就绪，系统准备完毕')
+                    self._startup_announced = True
         except Exception:
             msg.active_node_count = 0
 

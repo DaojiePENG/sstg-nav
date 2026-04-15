@@ -15,6 +15,8 @@ export interface LaserScanData {
   rangeMin: number;
   rangeMax: number;
   timestamp: number;
+  /** Pose snapshot at the time this scan was received */
+  pose: { x: number; y: number; theta: number } | null;
 }
 
 export function useLaserScan(enabled: boolean) {
@@ -35,7 +37,7 @@ export function useLaserScan(enabled: boolean) {
       ros,
       name: "/scan",
       messageType: "sensor_msgs/msg/LaserScan",
-      throttle_rate: 150, // ~7fps
+      throttle_rate: 80, // ~12fps
     } as any);
 
     topic.subscribe((msg: any) => {
@@ -47,6 +49,7 @@ export function useLaserScan(enabled: boolean) {
         rangeMin: msg.range_min,
         rangeMax: msg.range_max,
         timestamp: Date.now(),
+        pose: useRosStore.getState().robotPose,
       };
       dataRef.current = data;
       callbackRef.current?.(data);
