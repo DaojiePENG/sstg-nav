@@ -16,6 +16,17 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 
+/** Session 地图根目录 (cwd = sstg_ui_app, 与 vite.config.ts mapSessionsPlugin 一致) */
+const SESSION_MAPS_ROOT = path.resolve(process.cwd(), '../sstg_nav_ws/src/sstg_map_manager/maps');
+
+/** 将图片 URL 解析为本地文件系统路径 (支持 /map-sessions/ 和 /maps/) */
+function resolveImagePath(url: string): string {
+  if (url.startsWith('/map-sessions/')) {
+    return path.join(SESSION_MAPS_ROOT, url.replace('/map-sessions/', ''));
+  }
+  return path.join(process.cwd(), 'public', url);
+}
+
 // ── Types ──────────────────────────────────────────────
 
 interface StatusStep {
@@ -632,97 +643,164 @@ async function performAnnotation(
   }
 }
 
-/** 搜索拓扑地图中包含指定物体的节点 → 返回节点信息和图片路径 */
+/** 物体名多级匹配评分 */
+function scoreObjectMatch(objects: any[], aliases: string[], tags: string[], roomTypeCn: string, query: string): number {
+  let score = 0;
+  if (objects.some((o: any) =>
+    (o.name_cn || '').toLowerCase() === query || (o.name || '').toLowerCase() === query
+  )) {
+    score = 100;
+  } else if (objects.some((o: any) =>
+    (o.name || '').toLowerCase().includes(query) ||
+    (o.name_cn || '').toLowerCase().includes(query)
+  )) {
+    score = 80;
+  } else if (aliases.some(a => a === query) || tags.some(t => t === query)) {
+    score = 70;
+  } else if (aliases.some(a => a.includes(query)) || tags.some(t => t.includes(query))) {
+    score = 50;
+  } else if (query.length >= 2) {
+    for (const o of objects) {
+      const cn = (o.name_cn || '').toLowerCase();
+      if (cn.length >= 2 && query[query.length - 1] === cn[cn.length - 1] && Math.abs(cn.length - query.length) <= 1) {
+        score = 30;
+        break;
+      }
+    }
+  }
+  if (score === 0 && roomTypeCn.includes(query)) {
+    score = 10;
+  }
+  return score;
+}
+
+/** 搜索拓扑地图中包含指定物体的节点 → 返回节点信息和图片路径 (方向感知) */
 function searchTopoForObject(objectName: string): Array<{
   nodeId: number; nodeName: string; description: string;
   images: Array<{ url: string; alt: string }>;
+  matchScore: number;
+  matchedAngles?: number[];
 }> {
-  // 读取 public/maps/topological_map_manual.json
-  const topoPath = path.join(process.cwd(), 'public/maps/topological_map_manual.json');
-  if (!fs.existsSync(topoPath)) return [];
+  const query = objectName.toLowerCase();
+  const results: Array<{
+    nodeId: number; nodeName: string; description: string;
+    images: Array<{ url: string; alt: string }>;
+    matchScore: number;
+    matchedAngles: number[];
+  }> = [];
+  const seenNodeIds = new Set<number>();
 
+  // ── 优先搜索 session 地图 (含 viewpoints，方向精确) ──
   try {
-    const topo = JSON.parse(fs.readFileSync(topoPath, 'utf-8'));
-    const results: Array<{
-      nodeId: number; nodeName: string; description: string;
-      images: Array<{ url: string; alt: string }>;
-      matchScore: number;  // 匹配评分：越高越精准
-    }> = [];
+    if (fs.existsSync(SESSION_MAPS_ROOT)) {
+      const dirs = fs.readdirSync(SESSION_MAPS_ROOT, { withFileTypes: true });
+      console.log(`[searchTopo] SESSION_MAPS_ROOT=${SESSION_MAPS_ROOT}, dirs=${dirs.map(d=>d.name).join(',')}`);
+      for (const dir of dirs) {
+        if (!dir.isDirectory() || dir.name === 'default') continue;
+        const topoPath = path.join(SESSION_MAPS_ROOT, dir.name, 'topological_map.json');
+        if (!fs.existsSync(topoPath)) continue;
 
-    const query = objectName.toLowerCase();
+        const topo = JSON.parse(fs.readFileSync(topoPath, 'utf-8'));
+        const sessionId = dir.name;
 
-    for (const node of (topo.nodes || [])) {
-      const si = node.semantic_info || {};
-      const objects = si.objects || [];
-      const aliases = (si.aliases || []).map((a: string) => a.toLowerCase());
-      const tags = (si.semantic_tags || []).map((t: string) => t.toLowerCase());
+        for (const node of (topo.nodes || [])) {
+          const viewpoints = node.viewpoints || {};
+          const vpEntries = Object.values(viewpoints) as any[];
+          if (vpEntries.length === 0) continue;
 
-      // 多级匹配评分
-      let score = 0;
-      // 精确物体名匹配 (最高优先级)
-      if (objects.some((o: any) =>
-        (o.name_cn || '').toLowerCase() === query || (o.name || '').toLowerCase() === query
-      )) {
-        score = 100;
-      }
-      // 物体名包含匹配
-      else if (objects.some((o: any) =>
-        (o.name || '').toLowerCase().includes(query) ||
-        (o.name_cn || '').toLowerCase().includes(query)
-      )) {
-        score = 80;
-      }
-      // 别名/标签精确匹配
-      else if (aliases.some((a: string) => a === query) || tags.some((t: string) => t === query)) {
-        score = 70;
-      }
-      // 别名/标签包含匹配
-      else if (aliases.some((a: string) => a.includes(query)) || tags.some((t: string) => t.includes(query))) {
-        score = 50;
-      }
-      // 近义词/部分匹配 — 共享核心词根（如 书包↔背包 共享"包"）
-      else if (query.length >= 2) {
-        for (const o of objects) {
-          const cn = (o.name_cn || '').toLowerCase();
-          // 末字相同且长度相近 → 可能是同义词
-          if (cn.length >= 2 && query[query.length - 1] === cn[cn.length - 1] && Math.abs(cn.length - query.length) <= 1) {
-            score = 30;
-            break;
+          // 逐方向匹配
+          const matchedImages: Array<{ url: string; alt: string; score: number; angle: number }> = [];
+          for (const vp of vpEntries) {
+            const vpSi = vp.semantic_info || {};
+            const vpObjects = vpSi.objects || [];
+            const vpAliases = (vpSi.aliases || []).map((a: string) => a.toLowerCase());
+            const vpTags = (vpSi.semantic_tags || []).map((t: string) => t.toLowerCase());
+            const vpRoomCn = (vpSi.room_type_cn || '').toLowerCase();
+
+            const vpScore = scoreObjectMatch(vpObjects, vpAliases, vpTags, vpRoomCn, query);
+            if (vpScore > 0 && vp.image_path) {
+              const imgUrl = `/map-sessions/${sessionId}/${vp.image_path}`;
+              const imgDisk = path.join(SESSION_MAPS_ROOT, sessionId, vp.image_path);
+              if (fs.existsSync(imgDisk)) {
+                const angle = vp.angle ?? 0;
+                const roomLabel = vpSi.room_type_cn || node.name || '';
+                matchedImages.push({
+                  url: imgUrl,
+                  alt: `节点${node.id} ${roomLabel} ${String(angle).padStart(3, '0')}° 视角`,
+                  score: vpScore,
+                  angle,
+                });
+              }
+            }
           }
-        }
-      }
-      // 房间类型匹配 (最低优先级 — 太泛化)
-      if (score === 0 && (si.room_type_cn || '').toLowerCase().includes(query)) {
-        score = 10;
-      }
 
-      if (score > 0) {
-        const nodeImages: Array<{ url: string; alt: string }> = [];
-        const capturedDir = `/maps/captured_nodes/node_${node.id}`;
-        for (const deg of ['000', '090', '180', '270']) {
-          const imgPath = path.join(process.cwd(), `public${capturedDir}/${deg}deg_rgb.png`);
-          if (fs.existsSync(imgPath)) {
-            nodeImages.push({
-              url: `${capturedDir}/${deg}deg_rgb.png`,
-              alt: `节点${node.id} ${si.room_type_cn || node.name} ${deg}° 视角`,
+          if (matchedImages.length > 0) {
+            // 按评分降序，最佳匹配图片排前面
+            matchedImages.sort((a, b) => b.score - a.score);
+            const bestScore = matchedImages[0].score;
+            const aggSi = node.semantic_info || {};
+            console.log(`[searchTopo] SESSION HIT: node=${node.id}, query="${query}", angles=[${matchedImages.map(m=>m.angle)}], score=${bestScore}, imgs=${matchedImages.length}`);
+            results.push({
+              nodeId: node.id,
+              nodeName: aggSi.room_type_cn || node.name || `节点${node.id}`,
+              description: aggSi.description || matchedImages[0].alt,
+              images: matchedImages.map(m => ({ url: m.url, alt: m.alt })),
+              matchScore: bestScore,
+              matchedAngles: matchedImages.map(m => m.angle),
             });
+            seenNodeIds.add(node.id);
           }
         }
-
-        results.push({
-          nodeId: node.id,
-          nodeName: si.room_type_cn || node.name || `节点${node.id}`,
-          description: si.description || '',
-          images: nodeImages,
-          matchScore: score,
-        });
       }
     }
-    // 按匹配评分降序排列，精确匹配优先
-    return results.sort((a, b) => b.matchScore - a.matchScore);
-  } catch {
-    return [];
+  } catch (e) {
+    console.error('[searchTopo] session map error:', e);
   }
+
+  // ── Fallback: legacy 手动地图 (无 viewpoints，返回全部 4 张) ──
+  try {
+    const legacyPath = path.join(process.cwd(), 'public/maps/topological_map_manual.json');
+    if (fs.existsSync(legacyPath)) {
+      const topo = JSON.parse(fs.readFileSync(legacyPath, 'utf-8'));
+      for (const node of (topo.nodes || [])) {
+        if (seenNodeIds.has(node.id)) continue;  // session 已有，跳过
+
+        const si = node.semantic_info || {};
+        const objects = si.objects || [];
+        const aliases = (si.aliases || []).map((a: string) => a.toLowerCase());
+        const tags = (si.semantic_tags || []).map((t: string) => t.toLowerCase());
+        const roomCn = (si.room_type_cn || '').toLowerCase();
+
+        const score = scoreObjectMatch(objects, aliases, tags, roomCn, query);
+        if (score > 0) {
+          console.log(`[searchTopo] LEGACY HIT: node=${node.id}, query="${query}", score=${score}`);
+          const nodeImages: Array<{ url: string; alt: string }> = [];
+          const capturedDir = `/maps/captured_nodes/node_${node.id}`;
+          for (const deg of ['000', '090', '180', '270']) {
+            const imgPath = path.join(process.cwd(), `public${capturedDir}/${deg}deg_rgb.png`);
+            if (fs.existsSync(imgPath)) {
+              nodeImages.push({
+                url: `${capturedDir}/${deg}deg_rgb.png`,
+                alt: `节点${node.id} ${si.room_type_cn || node.name} ${deg}° 视角`,
+              });
+            }
+          }
+          results.push({
+            nodeId: node.id,
+            nodeName: si.room_type_cn || node.name || `节点${node.id}`,
+            description: si.description || '',
+            images: nodeImages,
+            matchScore: score,
+            matchedAngles: [],
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[searchTopo] legacy map error:', e);
+  }
+
+  return results.sort((a, b) => b.matchScore - a.matchScore);
 }
 
 /** 从用户文本中提取标注目标物体名 */
@@ -1132,15 +1210,34 @@ export default function chatSyncPlugin(): Plugin {
                 if (SYNONYMS[t]) expanded.push(...SYNONYMS[t]);
               }
 
-              // 拓扑词典匹配（只物体名）
+              // 拓扑词典匹配（只物体名 — 同时读 session + legacy 地图）
               const topoTerms: string[] = [];
               try {
-                const topoPath = path.join(process.cwd(), 'public/maps/topological_map_manual.json');
-                const topo = JSON.parse(fs.readFileSync(topoPath, 'utf-8'));
-                for (const node of (topo.nodes || [])) {
-                  const si = node.semantic_info || {};
-                  for (const obj of (si.objects || [])) {
-                    if (obj.name_cn) topoTerms.push(obj.name_cn);
+                // session 地图 (viewpoint 级物体名)
+                if (fs.existsSync(SESSION_MAPS_ROOT)) {
+                  for (const dir of fs.readdirSync(SESSION_MAPS_ROOT, { withFileTypes: true })) {
+                    if (!dir.isDirectory() || dir.name === 'default') continue;
+                    const tp = path.join(SESSION_MAPS_ROOT, dir.name, 'topological_map.json');
+                    if (!fs.existsSync(tp)) continue;
+                    const topo = JSON.parse(fs.readFileSync(tp, 'utf-8'));
+                    for (const node of (topo.nodes || [])) {
+                      for (const vp of Object.values(node.viewpoints || {}) as any[]) {
+                        for (const obj of (vp.semantic_info?.objects || [])) {
+                          if (obj.name_cn) topoTerms.push(obj.name_cn);
+                        }
+                      }
+                    }
+                  }
+                }
+                // legacy 地图 (节点级物体名)
+                const legacyPath = path.join(process.cwd(), 'public/maps/topological_map_manual.json');
+                if (fs.existsSync(legacyPath)) {
+                  const topo = JSON.parse(fs.readFileSync(legacyPath, 'utf-8'));
+                  for (const node of (topo.nodes || [])) {
+                    const si = node.semantic_info || {};
+                    for (const obj of (si.objects || [])) {
+                      if (obj.name_cn) topoTerms.push(obj.name_cn);
+                    }
                   }
                 }
               } catch {}
@@ -1154,8 +1251,10 @@ export default function chatSyncPlugin(): Plugin {
               // 搜索：取最高分匹配
               let bestResults: ReturnType<typeof searchTopoForObject> = [];
               let bestScore = 0;
+              console.log(`[chatSync] allTerms=[${allTerms.join(',')}]`);
               for (const term of allTerms) {
                 const results = searchTopoForObject(term);
+                console.log(`[chatSync] search("${term}") → ${results.length} results, top score=${results[0]?.matchScore}, imgs=${results.map(r=>`node${r.nodeId}:${r.images.length}img`).join(',')}`);
                 if (results.length > 0 && results[0].matchScore > bestScore) {
                   bestScore = results[0].matchScore;
                   bestResults = results.filter(r => r.matchScore >= 30);
@@ -1186,9 +1285,9 @@ export default function chatSyncPlugin(): Plugin {
 
                 // ② 用刚检索到的第一张节点图
                 if (!annotateBase64 && retrievedImgs.length > 0) {
-                  const publicPath = path.join(process.cwd(), 'public', retrievedImgs[0].url);
-                  if (fs.existsSync(publicPath)) {
-                    annotateBase64 = fs.readFileSync(publicPath).toString('base64');
+                  const resolvedPath = resolveImagePath(retrievedImgs[0].url);
+                  if (fs.existsSync(resolvedPath)) {
+                    annotateBase64 = fs.readFileSync(resolvedPath).toString('base64');
                     annotateMime = retrievedImgs[0].url.endsWith('.png') ? 'image/png' : 'image/jpeg';
                   }
                 }
@@ -1209,9 +1308,9 @@ export default function chatSyncPlugin(): Plugin {
                           break;
                         }
                       } else if (m.role === 'robot') {
-                        const publicPath = path.join(process.cwd(), 'public', imgUrl);
-                        if (fs.existsSync(publicPath)) {
-                          annotateBase64 = fs.readFileSync(publicPath).toString('base64');
+                        const resolvedPath = resolveImagePath(imgUrl);
+                        if (fs.existsSync(resolvedPath)) {
+                          annotateBase64 = fs.readFileSync(resolvedPath).toString('base64');
                           annotateMime = imgUrl.endsWith('.png') ? 'image/png' : 'image/jpeg';
                           break;
                         }
