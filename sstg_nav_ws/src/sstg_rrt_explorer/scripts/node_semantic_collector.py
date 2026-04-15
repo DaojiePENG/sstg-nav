@@ -180,7 +180,7 @@ class NodeSemanticCollector(Node):
         return status == GoalStatus.STATUS_SUCCEEDED
 
     def _collect_semantic(self, node_id, x, y):
-        """拍摄全景 + VLM 标注 + 更新节点语义。"""
+        """拍摄全景 + VLM 逐张标注 + 逐方向更新节点语义。"""
         # Capture panorama
         cap_req = CaptureImage.Request()
         cap_req.node_id = node_id
@@ -203,16 +203,18 @@ class NodeSemanticCollector(Node):
         self.get_logger().info(
             f'  Captured {len(cap_resp.image_paths)} images')
 
-        # Annotate each image
-        all_objects = []
-        best_room_type = ''
-        best_confidence = 0.0
-        best_description = ''
+        # Annotate each image and update per-viewpoint
+        all_results = []
 
         for path_entry in cap_resp.image_paths:
             # path_entry 格式: "angle:path"
             parts = path_entry.split(':', 1)
-            image_path = parts[1] if len(parts) == 2 else path_entry
+            if len(parts) == 2:
+                angle_deg = int(parts[0])
+                image_path = parts[1]
+            else:
+                image_path = path_entry
+                angle_deg = -1  # unknown angle
 
             ann_req = AnnotateSemantic.Request()
             ann_req.image_path = image_path
@@ -223,54 +225,46 @@ class NodeSemanticCollector(Node):
             ann_resp = ann_future.result()
 
             if ann_resp and ann_resp.success:
-                for obj in ann_resp.objects:
-                    all_objects.append(obj)
-                if ann_resp.confidence > best_confidence:
-                    best_room_type = ann_resp.room_type
-                    best_confidence = ann_resp.confidence
-                    best_description = ann_resp.description
                 self.get_logger().info(
-                    f'    Annotated: room={ann_resp.room_type}, '
+                    f'    [{angle_deg}°] room={ann_resp.room_type}, '
                     f'objects={[o.name for o in ann_resp.objects]}')
+
+                # Per-viewpoint update
+                sem_data = SemanticData()
+                sem_data.room_type = ann_resp.room_type
+                sem_data.confidence = ann_resp.confidence
+                sem_data.description = ann_resp.description
+                sem_data.objects = list(ann_resp.objects)
+
+                upd_req = UpdateSemantic.Request()
+                upd_req.node_id = node_id
+                upd_req.semantic_data = sem_data
+                upd_req.angle = angle_deg  # per-viewpoint update
+
+                upd_future = self.update_sem_cli.call_async(upd_req)
+                rclpy.spin_until_future_complete(self, upd_future, timeout_sec=5.0)
+                upd_resp = upd_future.result()
+
+                if not upd_resp or not upd_resp.success:
+                    self.get_logger().warn(
+                        f'    Failed to update viewpoint {angle_deg}°')
+
+                all_results.append({
+                    'angle': angle_deg,
+                    'room_type': ann_resp.room_type,
+                    'objects': [o.name for o in ann_resp.objects],
+                })
             else:
                 err = ann_resp.error_message if ann_resp else 'timeout'
-                self.get_logger().warn(f'    Annotation failed: {err}')
+                self.get_logger().warn(f'    [{angle_deg}°] Annotation failed: {err}')
 
-        if not best_room_type and not all_objects:
+        if not all_results:
             self.get_logger().warn('  No semantic data extracted')
             return None
 
-        # Deduplicate objects by name
-        seen = set()
-        unique_objects = []
-        for obj in all_objects:
-            if obj.name.lower() not in seen:
-                seen.add(obj.name.lower())
-                unique_objects.append(obj)
-
-        # Update semantic data on node
-        sem_data = SemanticData()
-        sem_data.room_type = best_room_type
-        sem_data.confidence = best_confidence
-        sem_data.description = best_description
-        sem_data.objects = unique_objects
-
-        upd_req = UpdateSemantic.Request()
-        upd_req.node_id = node_id
-        upd_req.semantic_data = sem_data
-
-        upd_future = self.update_sem_cli.call_async(upd_req)
-        rclpy.spin_until_future_complete(self, upd_future, timeout_sec=5.0)
-        upd_resp = upd_future.result()
-
-        if not upd_resp or not upd_resp.success:
-            self.get_logger().warn('  Failed to update semantic on map_manager')
-
         return {
-            'room_type': best_room_type,
-            'confidence': best_confidence,
-            'objects': [o.name for o in unique_objects],
-            'description': best_description,
+            'viewpoints': all_results,
+            'total_annotated': len(all_results),
         }
 
     def _save_results(self):

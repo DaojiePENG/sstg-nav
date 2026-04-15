@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Optional
 from pathlib import Path
 import networkx as nx
 import time
-from .topological_node import TopologicalNode, SemanticInfo
+from .topological_node import TopologicalNode, SemanticInfo, Viewpoint
 
 
 logger = logging.getLogger(__name__)
@@ -120,15 +120,34 @@ class TopologicalMap:
         if node_id not in self.nodes_dict:
             logger.warning(f"Node {node_id} not found")
             return False
-        
+
         node = self.nodes_dict[node_id]
         node.semantic_info = semantic_info
         if not node.name or node.name.startswith('拓扑点'):
-            node.name = semantic_info.room_type_cn or node.name
+            base_name = semantic_info.room_type_cn or node.name
+            node.name = self._unique_name(base_name, node_id)
         node.last_updated = time.time()
-        
+
         logger.info(f"Updated semantic info for node {node_id}: {semantic_info.room_type}")
         return True
+
+    def _unique_name(self, base_name: str, exclude_node_id: int = -1) -> str:
+        """Ensure node name is unique by appending a sequence number if needed.
+
+        e.g. 走廊 → 走廊, 走廊2, 走廊3 ...
+        """
+        existing = set()
+        for nid, n in self.nodes_dict.items():
+            if nid != exclude_node_id and n.name:
+                existing.add(n.name)
+
+        if base_name not in existing:
+            return base_name
+
+        seq = 2
+        while f'{base_name}{seq}' in existing:
+            seq += 1
+        return f'{base_name}{seq}'
     
     def add_panorama_image(self, node_id: int, angle: str, image_path: str) -> bool:
         """Add panorama image path for a specific angle."""
@@ -193,7 +212,52 @@ class TopologicalMap:
                         break
         
         return matching_nodes
-    
+
+    def query_by_object_with_angles(self, object_name: str) -> List[Tuple[int, List[int]]]:
+        """
+        Query nodes containing a specific object, returning which angles matched.
+
+        Returns:
+            List of (node_id, [matching_angles]) tuples.
+            matching_angles contains the viewpoint angles where the object was found.
+            Empty angles list means the object was found at node-level only.
+        """
+        results = []
+        object_lower = object_name.strip().lower()
+
+        for node_id, node in self.nodes_dict.items():
+            matched_angles = []
+
+            # Search viewpoint-level first
+            for angle, vp in node.viewpoints.items():
+                if vp.semantic_info:
+                    for obj in vp.semantic_info.objects:
+                        names = [obj.name, obj.name_cn]
+                        if any(
+                            object_lower in name.lower() or name.lower() in object_lower
+                            for name in names if name
+                        ):
+                            matched_angles.append(angle)
+                            break
+
+            # Fallback: check node-level semantic (backward compat)
+            if not matched_angles and node.semantic_info:
+                for obj in node.semantic_info.objects:
+                    names = [obj.name, obj.name_cn]
+                    if any(
+                        object_lower in name.lower() or name.lower() in object_lower
+                        for name in names if name
+                    ):
+                        matched_angles = []  # empty = node-level match
+                        results.append((node_id, matched_angles))
+                        break
+                continue
+
+            if matched_angles:
+                results.append((node_id, sorted(matched_angles)))
+
+        return results
+
     def query_by_combined(self, room_type: Optional[str] = None, 
                          object_name: Optional[str] = None) -> List[int]:
         """
