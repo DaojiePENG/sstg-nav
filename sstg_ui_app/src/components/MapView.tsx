@@ -1,23 +1,139 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, Line, Html, Sphere } from "@react-three/drei";
 import * as THREE from "three";
 import { loadPGM3D } from "../lib/pgm3DParser";
-import { Layers, Compass, MousePointer2, FolderOpen, Image as ImageIcon, X, Settings2, FlipHorizontal, FlipVertical, Map as MapIcon, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Save, Check, Plus, Edit2, Trash2, Camera as CameraIcon, Navigation } from "lucide-react";
-import { useRosStore } from "../store/rosStore";
+import { useLaserScan, type LaserScanData } from "../hooks/useLaserScan";
+import { Layers, Compass, MousePointer2, FolderOpen, Image as ImageIcon, X, Settings2, FlipHorizontal, FlipVertical, Map as MapIcon, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Save, Check, Plus, Edit2, Trash2, Camera as CameraIcon, Navigation, Crosshair, Radar, Box, Gamepad2 } from "lucide-react";
+import { useRosStore, type NavigationState, type ObjectSearchTrace } from "../store/rosStore";
+import { useVisionStore, type VisionTab } from "../store/visionStore";
+
+/** Pulsing beacon on target navigation node */
+function TargetBeacon({ position }: { position: [number, number, number] }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ringRef.current) {
+      const s = 1 + 0.3 * Math.sin(clock.elapsedTime * 3);
+      ringRef.current.scale.set(s, s, s);
+      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = 0.4 + 0.3 * Math.sin(clock.elapsedTime * 3);
+    }
+  });
+  return (
+    <mesh ref={ringRef} position={[position[0], 0.15, position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.4, 0.55, 32]} />
+      <meshBasicMaterial color="#f59e0b" transparent opacity={0.6} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+/** Get node color based on search trace state */
+function getNodeColor(nodeId: number, isSelected: boolean, trace: ObjectSearchTrace | null): { color: string; emissive: string; emissiveIntensity: number } {
+  if (!trace || trace.phase === '' || trace.phase === 'completed' && !trace.candidateNodeIds.includes(nodeId)) {
+    return { color: isSelected ? "#60a5fa" : "#3b82f6", emissive: isSelected ? "#60a5fa" : "#1e40af", emissiveIntensity: isSelected ? 2 : 1 };
+  }
+  if (trace.found && trace.currentNodeId === nodeId) {
+    return { color: "#10b981", emissive: "#10b981", emissiveIntensity: 2.5 };
+  }
+  if (trace.failedNodeIds.includes(nodeId)) {
+    return { color: "#ef4444", emissive: "#ef4444", emissiveIntensity: 1.5 };
+  }
+  if (trace.visitedNodeIds.includes(nodeId)) {
+    return { color: "#6b7280", emissive: "#4b5563", emissiveIntensity: 0.8 };
+  }
+  if (trace.candidateNodeIds.includes(nodeId)) {
+    return { color: "#fbbf24", emissive: "#f59e0b", emissiveIntensity: 1.2 };
+  }
+  return { color: isSelected ? "#60a5fa" : "#3b82f6", emissive: isSelected ? "#60a5fa" : "#1e40af", emissiveIntensity: isSelected ? 2 : 1 };
+}
+
+/** Laser scan point cloud rendered on the map */
+function LaserScanCloud({ scanDataRef, poseOverride, robotPose, toLocal }: {
+  scanDataRef: React.RefObject<LaserScanData | null>;
+  poseOverride: { x: number; y: number; theta: number } | null;
+  robotPose: { x: number; y: number; theta: number } | null;
+  toLocal: (wx: number, wy: number) => number[];
+}) {
+  const pointsRef = useRef<THREE.Points>(null);
+  const MAX_POINTS = 4096;
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(MAX_POINTS * 3), 3));
+    return geo;
+  }, []);
+
+  // Read pose directly from store to stay in sync with scan ref (both bypass React render cycle)
+  const poseOverrideRef = useRef(poseOverride);
+  poseOverrideRef.current = poseOverride;
+
+  useFrame(() => {
+    if (!pointsRef.current) return;
+    const scan = scanDataRef.current;
+    if (!scan) return;
+    // Use the pose snapshot captured when this scan arrived (time-synced),
+    // fall back to live pose only if snapshot is missing
+    const pose = poseOverrideRef.current ?? scan.pose ?? useRosStore.getState().robotPose ?? { x: 0, y: 0, theta: 0 };
+    const positions = geometry.attributes.position.array as Float32Array;
+    const { ranges, angleMin, angleIncrement, rangeMax } = scan;
+    let idx = 0;
+    for (let i = 0; i < ranges.length && idx < MAX_POINTS; i++) {
+      const r = ranges[i];
+      if (r < 0.05 || r > rangeMax || !isFinite(r)) continue;
+      // laser frame 相对 base_link 有 yaw=π（TF: base_link→laser），需补偿
+      const angle = angleMin + i * angleIncrement + pose.theta + Math.PI;
+      const wx = pose.x + r * Math.cos(angle);
+      const wy = pose.y + r * Math.sin(angle);
+      const p = toLocal(wx, wy);
+      positions[idx * 3] = p[0];
+      positions[idx * 3 + 1] = 0.2;
+      positions[idx * 3 + 2] = p[2];
+      idx++;
+    }
+    for (let i = idx; i < MAX_POINTS; i++) {
+      positions[i * 3] = 0;
+      positions[i * 3 + 1] = -10;
+      positions[i * 3 + 2] = 0;
+    }
+    geometry.attributes.position.needsUpdate = true;
+    geometry.setDrawRange(0, idx);
+  });
+
+  return (
+    <points ref={pointsRef} geometry={geometry}>
+      <pointsMaterial color="#22c55e" size={3} sizeAttenuation={false} transparent opacity={0.9} />
+    </points>
+  );
+}
+
 import { useMapStore, DEFAULT_CALIB } from "../store/mapStore";
 import { cn } from "../lib/utils";
+
+interface ViewpointInfo {
+  angle: number;
+  image_path: string;
+  depth_path?: string;
+  semantic_info?: {
+    room_type: string;
+    room_type_cn: string;
+    confidence: number;
+    objects: { name: string; name_cn: string; position: string; quantity: number; confidence: number }[];
+    description: string;
+  };
+}
 
 interface TopoNode {
   id: number;
   name: string;
   pose: { x: number; y: number; theta: number };
-  semantic_info: {
+  viewpoints?: Record<string, ViewpointInfo>;
+  semantic_info?: {
     room_type: string;
     room_type_cn: string;
     aliases: string[];
     confidence: number;
-  }
+    objects?: { name: string; name_cn: string; position: string }[];
+    description?: string;
+  };
 }
 
 // Controller component to extract and set camera state
@@ -116,14 +232,14 @@ function LiveMapLayer({ grid }: { grid: { data: number[]; width: number; height:
   const cy = grid.origin[1] + H / 2;
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-cx, 0.05, cy]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, 0.05, -cy]}>
       <planeGeometry args={[W, H]} />
       <meshBasicMaterial map={texture} transparent opacity={0.7} side={THREE.DoubleSide} />
     </mesh>
   );
 }
 
-function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration, robotPose, occupancyGrid }: any) {
+function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration, robotPose, occupancyGrid, navigationState, objectSearchTrace, setPoseMode, pendingPose, onGroundClick, onGroundMove, showScanCloud, scanDataRef, scanPoseOverride }: any) {
   const { colorCanvas, dispCanvas, width, height, config } = mapData;
   const W = width * config.resolution;
   const H = height * config.resolution;
@@ -139,21 +255,57 @@ function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration,
   const cx = config.origin[0] + W/2;
   const cy = config.origin[1] + H/2;
 
-  const BASE_MAP_SCALE_X = -1;
+  const BASE_MAP_SCALE_X = 1;
   const BASE_MAP_SCALE_Y = 1;
-  const BASE_NODE_SCALE_X = -1;
-  const BASE_NODE_SCALE_Y = -1;
-
-  const toLocal = (wx: number, wy: number) => {
-     let lx = wx - cx;
-     let ly = wy - cy; 
-     return [lx, 0, -ly]; 
-  };
 
   const { flipMapX = false, flipMapY = false, flipNodeX = false, flipNodeY = false, showMap = true, showNodes = true, nodeOffsetX = 0, nodeOffsetY = 0 } = (calibration || {}) as any;
 
+  // RViz 标准映射: scene.x = world.x, scene.z = -world.y
+  // flipNode 在此基础上可选翻转
+  const nfx = flipNodeX ? -1 : 1;   // 默认 +1（不翻转 X）
+  const nfy = flipNodeY ? 1 : -1;   // 默认 -1（Y→-Z）
+
+  // toLocal: ROS map frame → Three.js scene coords
+  const toLocal = (wx: number, wy: number) => {
+     return [nfx * (wx - cx), 0, nfy * (wy - cy)];
+  };
+
+  // Reverse: Three.js scene → ROS map frame
+  const toWorld = (lx: number, lz: number) => {
+    return { x: lx / nfx + cx, y: lz / nfy + cy };
+  };
+
+  const { camera, raycaster, pointer } = useThree();
+
+  // Handle click on ground plane for set-pose mode
+  // e.point is in toLocal coords (no group scale), toWorld directly
+  const groundRef = useRef<THREE.Mesh>(null);
+  const handleGroundClick = (e: any) => {
+    if (!setPoseMode || !onGroundClick) return;
+    e.stopPropagation();
+    const point = e.point;
+    // group scale 已去掉，point 就是 toLocal 坐标，直接 toWorld
+    const world = toWorld(point.x, point.z);
+    onGroundClick(world.x, world.y);
+  };
+
+  const handleGroundMove = (e: any) => {
+    if (!setPoseMode || !pendingPose || !onGroundMove) return;
+    const point = e.point;
+    const world = toWorld(point.x, point.z);
+    const dx = world.x - pendingPose.x;
+    const dy = world.y - pendingPose.y;
+    if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+      onGroundMove(Math.atan2(dy, dx));
+    }
+  };
+
   return (
     <group>
+      {/* NOTE: ground plane for set-pose moved inside node group below */}
+
+      {/* Pending pose marker — rendered at top level, outside node group */}
+
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 20, 10]} intensity={1.5} color="#bae6fd" />
       <pointLight position={[0, 5, 0]} intensity={2} color="#3b82f6" />
@@ -181,8 +333,37 @@ function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration,
       )}
 
       {showNodes && (
-        <group position={[nodeOffsetX, 0, -nodeOffsetY]} scale={[(flipNodeX ? -1 : 1) * BASE_NODE_SCALE_X, 1, (flipNodeY ? -1 : 1) * BASE_NODE_SCALE_Y]}>
-          
+        <group position={[nodeOffsetX, 0, nodeOffsetY]}>
+
+          {/* Ground plane for set-pose click detection — inside node group for consistent coords */}
+          {setPoseMode && (
+            <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} onClick={handleGroundClick} onPointerMove={handleGroundMove}>
+              <planeGeometry args={[W * 2, H * 2]} />
+              <meshBasicMaterial color="#3b82f6" transparent opacity={0.08} side={THREE.DoubleSide} />
+            </mesh>
+          )}
+
+          {/* Pending pose marker (blue pin) */}
+          {setPoseMode && pendingPose && (() => {
+            const p = toLocal(pendingPose.x, pendingPose.y);
+            return (
+              <group position={[p[0], 0, p[2]]} raycast={() => null}>
+                <mesh position={[0, 0.6, 0]} raycast={() => null}>
+                  <sphereGeometry args={[0.2, 16, 16]} />
+                  <meshStandardMaterial color="#3b82f6" emissive="#3b82f6" emissiveIntensity={2} />
+                </mesh>
+                <mesh position={[0, 0.3, 0]} raycast={() => null}>
+                  <cylinderGeometry args={[0.05, 0.05, 0.6, 8]} />
+                  <meshStandardMaterial color="#3b82f6" emissive="#1e40af" emissiveIntensity={1} />
+                </mesh>
+                <mesh position={[0.5 * Math.cos(pendingPose.yaw || 0), 0.15, 0.5 * Math.sin(pendingPose.yaw || 0)]} rotation={[0, pendingPose.yaw || 0, 0]} raycast={() => null}>
+                  <coneGeometry args={[0.15, 0.4, 8]} />
+                  <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={2} />
+                </mesh>
+              </group>
+            );
+          })()}
+
           {topoNodes.map((n: TopoNode, i: number) => {
             if (i === 0) return null;
             const p0 = toLocal(topoNodes[i-1].pose.x, topoNodes[i-1].pose.y);
@@ -195,18 +376,22 @@ function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration,
           {topoNodes.map((n: TopoNode) => {
             const pos = toLocal(n.pose.x, n.pose.y);
             const isSelected = selectedNode?.id === n.id;
+            const nodeColors = getNodeColor(n.id, isSelected, objectSearchTrace);
+            const isTarget = (navigationState?.isNavigating && navigationState.targetNodeId === n.id)
+              || (objectSearchTrace?.currentNodeId === n.id && objectSearchTrace?.phase !== 'completed');
             return (
               <group key={`node-${n.id}`} position={[pos[0], pos[1], pos[2]]}>
                 <mesh position={[0, 0.4, 0]} onClick={(e) => { e.stopPropagation(); onSelectNode(n); }}>
                   <octahedronGeometry args={[isSelected ? 0.3 : 0.2, 0]} />
-                  <meshStandardMaterial 
-                    color={isSelected ? "#60a5fa" : "#3b82f6"} 
-                    emissive={isSelected ? "#60a5fa" : "#1e40af"} 
-                    emissiveIntensity={isSelected ? 2 : 1}
+                  <meshStandardMaterial
+                    color={nodeColors.color}
+                    emissive={nodeColors.emissive}
+                    emissiveIntensity={nodeColors.emissiveIntensity}
                     wireframe={isSelected}
                   />
                 </mesh>
-                <Line points={[[0, 0, 0], [0, 0.4, 0]]} color={isSelected ? "#60a5fa" : "#3b82f6"} lineWidth={2} opacity={0.5} transparent />
+                {isTarget && <TargetBeacon position={[0, 0, 0]} />}
+                <Line points={[[0, 0, 0], [0, 0.4, 0]]} color={nodeColors.color} lineWidth={2} opacity={0.5} transparent />
                 <Html position={[0, 0.8, 0]} center zIndexRange={[100, 0]} className="pointer-events-none">
                   <div className={cn(
                     "text-[10px] font-mono px-1.5 py-0.5 rounded backdrop-blur-md border whitespace-nowrap shadow-lg transition-all",
@@ -219,20 +404,44 @@ function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration,
             )
           })}
 
+          {/* Pose trail */}
+          {navigationState?.poseTrail && navigationState.poseTrail.length > 1 && (
+            <Line
+              points={navigationState.poseTrail.map((p: { x: number; y: number }) => {
+                const lp = toLocal(p.x, p.y);
+                return [lp[0], 0.15, lp[2]] as [number, number, number];
+              })}
+              color="#34d399"
+              lineWidth={3}
+              transparent
+              opacity={0.7}
+            />
+          )}
+
           {robotPose && (
             <group position={(() => {
               const p = toLocal(robotPose.x, robotPose.y);
               return [p[0], 0.5, p[2]] as [number, number, number];
             })()}
-            rotation={[0, -(robotPose.theta || 0), 0]}
+            rotation={[0, robotPose.theta || 0, 0]}
             >
-              {/* Arrow-shaped robot indicator: cone pointing forward */}
-              <mesh rotation={[0, 0, Math.PI / 2]}>
+              {/* cone 默认朝+Y，绕Z转-π/2使其朝+X（scene +X = world +X = 机器人前方） */}
+              <mesh rotation={[0, 0, -Math.PI / 2]}>
                 <coneGeometry args={[0.25, 0.6, 8]} />
                 <meshStandardMaterial color="#34d399" emissive="#10b981" emissiveIntensity={1.5} />
               </mesh>
               <pointLight distance={2} intensity={2} color="#10b981" />
             </group>
+          )}
+
+          {/* Laser scan — inside node group so it shares the same scale/offset transform */}
+          {showScanCloud && (
+            <LaserScanCloud
+              scanDataRef={scanDataRef}
+              poseOverride={scanPoseOverride}
+              robotPose={robotPose}
+              toLocal={toLocal}
+            />
           )}
         </group>
       )}
@@ -251,18 +460,81 @@ function getConfidenceColor(str: string, baseConf: number) {
   return { val, bg: "bg-orange-500/20", border: "border-orange-500/30", text: "text-orange-400" };
 }
 
+const VISION_BUTTONS: { icon: React.ElementType; label: string; tab: VisionTab }[] = [
+  { icon: CameraIcon, label: "相机", tab: "camera" },
+  { icon: Layers,     label: "深度", tab: "rgbd" },
+  { icon: Radar,      label: "LiDAR", tab: "lidar" },
+  { icon: Box,        label: "伪3D", tab: "pointcloud" },
+  { icon: Gamepad2,   label: "遥控", tab: "teleop" },
+];
+
+function VisionQuickBar() {
+  const togglePanel = useVisionStore(s => s.togglePanel);
+  const pipActivePanels = useVisionStore(s => s.pipActivePanels);
+  const isPiPVisible = useVisionStore(s => s.isPiPVisible);
+  const openPiP = useVisionStore(s => s.openPiP);
+
+  return (
+    <div className="absolute top-6 left-[21rem] z-50 flex items-center gap-1.5 bg-slate-900/70 backdrop-blur-md border border-slate-700/50 rounded-xl px-2 py-1.5 shadow-xl">
+      {VISION_BUTTONS.map(({ icon: Icon, label, tab }) => {
+        const isActive = isPiPVisible && pipActivePanels.includes(tab);
+        return (
+          <button
+            key={tab}
+            onClick={() => isPiPVisible ? togglePanel(tab) : openPiP(tab)}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-all",
+              isActive
+                ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
+                : "border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/60"
+            )}
+            title={label}
+          >
+            <Icon size={14} />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 纯置信度判色，无 hash 扰动 —— 用于 viewpoint 方向语义 */
+function confidenceColor(conf: number) {
+  if (conf >= 0.85) return { bg: "bg-emerald-500/20", border: "border-emerald-500/30", text: "text-emerald-400" };
+  if (conf >= 0.60) return { bg: "bg-blue-500/20", border: "border-blue-500/30", text: "text-blue-400" };
+  return { bg: "bg-orange-500/20", border: "border-orange-500/30", text: "text-orange-400" };
+}
+
 const PANORAMA_ANGLES = [0, 90, 180, 270];
+
+/** 获取节点方向图片 URL。session 地图用 viewpoints 里的相对路径，legacy 用旧路径 */
+function getNodeImageUrl(node: TopoNode, angle: number, activeMap: any): string {
+  // 优先从 viewpoints 取相对路径
+  const vp = node.viewpoints?.[String(angle)];
+  if (vp?.image_path && activeMap?.source === 'session') {
+    const sessionId = activeMap.id.replace('session:', '');
+    return `/map-sessions/${sessionId}/${vp.image_path}`;
+  }
+  // legacy fallback
+  return `/maps/captured_nodes/node_${node.id}/${angle.toString().padStart(3, '0')}deg_rgb.png`;
+}
 
 export default function MapView() {
   const [mapData, setMapData] = useState<any>(null);
   const [topoNodes, setTopoNodes] = useState<TopoNode[]>([]);
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showInspector, setShowInspector] = useState(false);
 
-  const { maps, activeMapId, calibrations, savedCameraState, addMap, deleteMap, renameMap, updateMap, setActiveMapId, updateCalibration, saveCalibration, saveCameraState } = useMapStore();
+  const { maps, activeMapId, calibrations, savedCameraState, addMap, deleteMap, renameMap, updateMap, setActiveMapId, updateCalibration, saveCalibration, saveCameraState, discoverSessions } = useMapStore();
+
+  // Auto-discover map sessions on mount
+  useEffect(() => { discoverSessions(); }, []);
   const activeMap = maps.find(m => m.id === activeMapId) || maps[0];
-  const calibration = calibrations[activeMap.id] || DEFAULT_CALIB;
+  const activeMapLabel = activeMap?.label;
+  const calibration = calibrations[activeMap?.id] || DEFAULT_CALIB;
   const [showMapSelector, setShowMapSelector] = useState(false);
 
   const [showAlignMenu, setShowAlignMenu] = useState(false);
@@ -280,7 +552,70 @@ export default function MapView() {
   const [enlargedAngle, setEnlargedAngle] = useState<number | null>(null);
   const robotPose = useRosStore(state => state.robotPose);
   const startTask = useRosStore(state => state.startTask);
+  const cancelTask = useRosStore(state => state.cancelTask);
+  const executeNavigation = useRosStore(state => state.executeNavigation);
+  const clearPoseTrail = useRosStore(state => state.clearPoseTrail);
   const occupancyGrid = useRosStore(state => state.occupancyGrid);
+  const navigationState = useRosStore(state => state.navigationState);
+  const objectSearchTrace = useRosStore(state => state.objectSearchTrace);
+  const taskStatus = useRosStore(state => state.taskStatus);
+  const localizationQuality = useRosStore(state => state.localizationQuality);
+  const setInitialPose = useRosStore(state => state.setInitialPose);
+
+  // Set Pose mode state: step1=pick position, step2=preview yaw via mouse, confirm click
+  const [setPoseMode, setSetPoseMode] = useState(false);
+  const [pendingPose, setPendingPose] = useState<{ x: number; y: number } | null>(null);
+  const [pendingYaw, setPendingYaw] = useState<number>(0);
+  const [showScanOverlay, setShowScanOverlay] = useState(false); // independent scan toggle
+
+  // Navigation failure toast
+  const [navError, setNavError] = useState<string | null>(null);
+  const prevNavStatusRef = useRef<string>('');
+  useEffect(() => {
+    const status = navigationState?.status || '';
+    const prev = prevNavStatusRef.current;
+    prevNavStatusRef.current = status;
+    if (status === 'failed' && prev !== 'failed' && navigationState?.errorMessage) {
+      setNavError(navigationState.errorMessage);
+      const timer = setTimeout(() => setNavError(null), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [navigationState?.status, navigationState?.errorMessage]);
+
+  // Laser scan — show when in set-pose mode OR scan overlay toggled on
+  const showScanCloud = setPoseMode || showScanOverlay;
+  const { dataRef: scanDataRef } = useLaserScan(showScanCloud);
+
+  // Arrow keys to adjust pendingPose position (0.05m per press)
+  useEffect(() => {
+    if (!setPoseMode || !pendingPose) return;
+    const STEP = 0.05;
+    const handler = (e: KeyboardEvent) => {
+      let dx = 0, dy = 0;
+      // RViz 标准: world+X=屏幕右, world+Y=屏幕上(远离相机)
+      if (e.key === 'ArrowUp') dy = STEP;
+      else if (e.key === 'ArrowDown') dy = -STEP;
+      else if (e.key === 'ArrowLeft') dx = -STEP;
+      else if (e.key === 'ArrowRight') dx = STEP;
+      else if (e.key === 'Enter') {
+        // Confirm pose
+        setInitialPose(pendingPose.x, pendingPose.y, pendingYaw);
+        setPendingPose(null);
+        setPendingYaw(0);
+        setSetPoseMode(false);
+        return;
+      } else if (e.key === 'Escape') {
+        setPendingPose(null);
+        setPendingYaw(0);
+        setSetPoseMode(false);
+        return;
+      } else return;
+      e.preventDefault();
+      setPendingPose(prev => prev ? { x: prev.x + dx, y: prev.y + dy } : null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [setPoseMode, pendingPose, pendingYaw, setInitialPose]);
 
   // Camera getter ref
   const getCameraStateRef = useRef<(() => any) | null>(null);
@@ -288,15 +623,40 @@ export default function MapView() {
   useEffect(() => {
     async function initMap() {
       setLoading(true);
+      setLoadError(null);
       try {
         const activeMap = maps.find(m => m.id === activeMapId) || maps[0];
-        const topoRes = await fetch(activeMap.topoJson || "/maps/topological_map_manual.json");
-        const topoData = await topoRes.json();
-        setTopoNodes(topoData.nodes || []);
-        const data = await loadPGM3D(activeMap.pgm, activeMap.yaml);
-        setMapData(data);
-      } catch (err) {
+        if (!activeMap) { setLoadError('没有可用的地图'); return; }
+
+        // Load topo nodes
+        if (activeMap.topoJson) {
+          try {
+            const topoRes = await fetch(activeMap.topoJson);
+            if (topoRes.ok) {
+              const topoData = await topoRes.json();
+              setTopoNodes(topoData.nodes || []);
+            } else {
+              console.warn('Topo JSON not found:', activeMap.topoJson);
+              setTopoNodes([]);
+            }
+          } catch { setTopoNodes([]); }
+        }
+
+        // Load PGM grid map (optional — session maps may not have one)
+        if (activeMap.pgm) {
+          try {
+            const data = await loadPGM3D(activeMap.pgm, activeMap.yaml);
+            setMapData(data);
+          } catch (err: any) {
+            console.warn('PGM load failed (using topo-only mode):', err?.message || err);
+            setMapData(null);
+          }
+        } else {
+          setMapData(null);
+        }
+      } catch (err: any) {
         console.error("Failed to load map:", err);
+        setLoadError(err?.message || '地图加载失败');
       } finally {
         setLoading(false);
       }
@@ -304,7 +664,6 @@ export default function MapView() {
     initMap();
   }, [activeMapId, maps]);
 
-  const activeMapLabel = maps.find(m => m.id === activeMapId)?.label;
 
   useEffect(() => {
     if (enlargedAngle === null) return;
@@ -398,11 +757,11 @@ export default function MapView() {
           </div>
           <button onClick={handlePrevImage} className="absolute left-8 top-1/2 -translate-y-1/2 p-4 bg-white/5 hover:bg-white/20 text-white rounded-full transition-all hover:scale-110 backdrop-blur-md border border-white/10 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)]"><ChevronLeft size={32} /></button>
           <button onClick={handleNextImage} className="absolute right-8 top-1/2 -translate-y-1/2 p-4 bg-white/5 hover:bg-white/20 text-white rounded-full transition-all hover:scale-110 backdrop-blur-md border border-white/10 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)]"><ChevronRight size={32} /></button>
-          <img key={enlargedAngle} src={`/maps/captured_nodes/node_${selectedNode.id}/${enlargedAngle.toString().padStart(3, 0)}deg_rgb.png`} className="max-w-[85vw] max-h-[85vh] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-slate-800 object-contain animate-in slide-in-from-bottom-4 zoom-in-95 duration-300" />
+          <img key={enlargedAngle} src={getNodeImageUrl(selectedNode, enlargedAngle, activeMap)} className="max-w-[85vw] max-h-[85vh] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-slate-800 object-contain animate-in slide-in-from-bottom-4 zoom-in-95 duration-300" />
           <div className="absolute bottom-8 flex gap-3 z-50 bg-black/40 p-3 rounded-2xl backdrop-blur-md border border-white/5">
             {PANORAMA_ANGLES.map((angle) => (
               <div key={angle} onClick={() => setEnlargedAngle(angle)} className={cn("relative h-16 aspect-video rounded-md overflow-hidden cursor-pointer transition-all border-2", enlargedAngle === angle ? "border-blue-500 scale-110 shadow-[0_0_15px_rgba(59,130,246,0.5)]" : "border-transparent opacity-40 hover:opacity-80")}>
-                <img src={`/maps/captured_nodes/node_${selectedNode.id}/${angle.toString().padStart(3, 0)}deg_rgb.png`} className="w-full h-full object-cover" />
+                <img src={getNodeImageUrl(selectedNode, angle, activeMap)} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="text-[11px] font-mono font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,1)] bg-black/40 px-1.5 rounded">{angle}°</span></div>
               </div>
             ))}
@@ -412,11 +771,19 @@ export default function MapView() {
 
       {/* MAIN 3D CANVAS */}
       <div className="flex-1 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black">
-        {loading || !mapData ? (
+        {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
               <span className="text-sm font-mono text-slate-400">LOADING 3D HOLOGRAPHIC MAP...</span>
+            </div>
+          </div>
+        ) : loadError ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-center px-8">
+              <span className="text-red-400 text-lg">地图加载失败</span>
+              <span className="text-sm text-slate-500 font-mono max-w-md">{loadError}</span>
+              <span className="text-xs text-slate-600 mt-2">请在左侧切换其他地图，或检查地图文件是否存在</span>
             </div>
           </div>
         ) : (
@@ -433,8 +800,187 @@ export default function MapView() {
               calibration={calibration}
               robotPose={robotPose}
               occupancyGrid={occupancyGrid}
+              navigationState={navigationState}
+              objectSearchTrace={objectSearchTrace}
+              setPoseMode={setPoseMode}
+              pendingPose={pendingPose ? { ...pendingPose, yaw: pendingYaw } : null}
+              showScanCloud={showScanCloud}
+              scanDataRef={scanDataRef}
+              scanPoseOverride={pendingPose ? { x: pendingPose.x, y: pendingPose.y, theta: pendingYaw } : null}
+              onGroundClick={(x: number, y: number) => {
+                if (!pendingPose) {
+                  // Step 1: set position
+                  setPendingPose({ x, y });
+                  setPendingYaw(0);
+                } else {
+                  // Step 2: confirm with current yaw
+                  setInitialPose(pendingPose.x, pendingPose.y, pendingYaw);
+                  setPendingPose(null);
+                  setPendingYaw(0);
+                  setSetPoseMode(false);
+                }
+              }}
+              onGroundMove={(yaw: number) => {
+                if (pendingPose) setPendingYaw(yaw);
+              }}
             />
           </Canvas>
+        )}
+
+        {/* Localization Quality Indicator + Set Pose Button */}
+        <div className="absolute top-6 right-52 z-50 flex items-center gap-2">
+          {localizationQuality === 'poor' && !setPoseMode && (
+            <div className="bg-amber-500/15 backdrop-blur-md border border-amber-500/30 px-3 py-2 rounded-xl text-amber-400 text-[11px] font-medium animate-pulse">
+              定位不确定，建议设定初始位置
+            </div>
+          )}
+          {/* Independent scan overlay toggle */}
+          <button
+            onClick={() => setShowScanOverlay(!showScanOverlay)}
+            className={cn(
+              "backdrop-blur-md border px-3 py-2.5 rounded-xl shadow-lg flex items-center gap-2 transition-colors text-xs font-medium",
+              showScanOverlay
+                ? "bg-green-500/20 border-green-500/50 text-green-400"
+                : "bg-slate-900/80 border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-800"
+            )}
+            title="在地图上显示/隐藏激光点云"
+          >
+            <Layers size={16} />
+            点云
+          </button>
+          <button
+            onClick={() => { setSetPoseMode(!setPoseMode); setPendingPose(null); setPendingYaw(0); }}
+            className={cn(
+              "backdrop-blur-md border px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 transition-colors text-xs font-medium",
+              setPoseMode
+                ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                : "bg-slate-900/80 border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-800"
+            )}
+          >
+            <Crosshair size={16} />
+            {setPoseMode
+              ? (pendingPose ? "移动鼠标调整朝向，点击确认" : "点击地图选择位置...")
+              : "设定位置"}
+          </button>
+        </div>
+
+        {/* Set Pose Coordinate Panel */}
+        {setPoseMode && pendingPose && (
+          <div className="absolute bottom-6 right-6 z-50 bg-slate-900/90 backdrop-blur-md border border-blue-500/30 rounded-xl p-4 shadow-2xl min-w-[220px]">
+            <div className="text-[10px] text-blue-400 uppercase tracking-wider font-bold mb-2">设定位置</div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex justify-between">
+                <span className="text-[11px] text-slate-400">X</span>
+                <span className="text-[11px] text-white font-mono">{pendingPose.x.toFixed(3)} m</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] text-slate-400">Y</span>
+                <span className="text-[11px] text-white font-mono">{pendingPose.y.toFixed(3)} m</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] text-slate-400">Yaw</span>
+                <span className="text-[11px] text-amber-400 font-mono">{(pendingYaw * 180 / Math.PI).toFixed(1)}°</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-700/50 text-[10px] text-slate-500 leading-relaxed">
+                方向键微调位置 (0.05m/次)<br/>
+                鼠标移动预览朝向<br/>
+                点击确认 / Enter 确认 / Esc 取消
+              </div>
+              <button
+                onClick={() => {
+                  setInitialPose(pendingPose.x, pendingPose.y, pendingYaw);
+                  setPendingPose(null); setPendingYaw(0); setSetPoseMode(false);
+                }}
+                className="mt-2 w-full py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[11px] font-medium hover:bg-blue-500/30 transition-colors"
+              >
+                确认设定
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Robot Pose Display — always visible */}
+        {robotPose && !navigationState?.isNavigating && !(setPoseMode && pendingPose) && (
+          <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+            {navigationState?.poseTrail && navigationState.poseTrail.length > 0 && (
+              <button
+                onClick={clearPoseTrail}
+                className="bg-red-500/15 backdrop-blur-md border border-red-500/40 text-red-400 hover:bg-red-500/25 transition-colors rounded-xl px-4 py-2 text-xs font-medium shadow-lg"
+              >
+                清除轨迹
+              </button>
+            )}
+            <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-xl px-3 py-2 shadow-lg">
+              <div className="text-[9px] text-emerald-400 uppercase tracking-wider font-bold mb-1">Robot Pose</div>
+              <div className="flex gap-3 text-[11px] font-mono">
+                <span className="text-slate-400">X <span className="text-white">{robotPose.x.toFixed(2)}</span></span>
+                <span className="text-slate-400">Y <span className="text-white">{robotPose.y.toFixed(2)}</span></span>
+                <span className="text-slate-400">{(robotPose.theta * 180 / Math.PI).toFixed(0)}°</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation Failure Toast */}
+        {navError && (
+          <div className="absolute bottom-6 right-6 z-50 max-w-sm animate-in slide-in-from-bottom-4 bg-red-500/15 backdrop-blur-md border border-red-500/40 rounded-xl p-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <X size={16} className="text-red-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] text-red-400 font-bold uppercase tracking-wider mb-1">导航失败</div>
+                <div className="text-[12px] text-red-300/90 leading-relaxed">{navError}</div>
+              </div>
+              <button onClick={() => setNavError(null)} className="text-red-400/60 hover:text-red-300 shrink-0">
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation HUD */}
+        {navigationState?.isNavigating && (
+          <div className="absolute bottom-6 right-6 z-50 bg-slate-900/90 backdrop-blur-md border border-slate-700/50 rounded-xl p-4 shadow-2xl min-w-[200px]">
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">
+              {objectSearchTrace?.phase && objectSearchTrace.phase !== 'completed' ? '搜索导航' : '导航'}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {objectSearchTrace?.targetObject && objectSearchTrace.phase !== 'completed' && (
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-slate-400">目标</span>
+                  <span className="text-[11px] text-amber-400 font-medium">{objectSearchTrace.targetObject}</span>
+                </div>
+              )}
+              {objectSearchTrace?.phase && objectSearchTrace.phase !== 'completed' && (
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-slate-400">候选</span>
+                  <span className="text-[11px] text-white font-mono">{objectSearchTrace.currentCandidateIndex + 1} / {objectSearchTrace.totalCandidates}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-[11px] text-slate-400">节点</span>
+                <span className="text-[11px] text-emerald-400 font-mono">Node {navigationState.targetNodeId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] text-slate-400">距离</span>
+                <span className="text-[11px] text-white font-mono">{navigationState.distanceToTarget.toFixed(2)}m</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] text-slate-400">ETA</span>
+                <span className="text-[11px] text-white font-mono">{navigationState.estimatedTimeRemaining.toFixed(0)}s</span>
+              </div>
+              <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${(taskStatus?.progress ?? 0) * 100}%` }} />
+              </div>
+              <button
+                onClick={() => cancelTask().catch(err => console.error('[NAV] cancel error:', err))}
+                className="mt-2 w-full py-2 bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg text-[11px] font-medium hover:bg-red-500/30 transition-colors"
+              >
+                取消导航
+              </button>
+            </div>
+          </div>
         )}
 
         {/* OVERLAYS: Top Left Map Selector */}
@@ -496,6 +1042,9 @@ export default function MapView() {
             </span>
           </button>
         </div>
+
+        {/* OVERLAYS: Top Center Vision Quick Buttons */}
+        <VisionQuickBar />
 
         {/* OVERLAYS: Bottom Left Alignment Menu */}
         <div className="absolute bottom-6 left-6 z-50">
@@ -641,8 +1190,8 @@ export default function MapView() {
                       className="relative group aspect-video bg-slate-950 rounded-lg overflow-hidden border border-slate-800/80 cursor-pointer hover:border-blue-500/50 transition-colors shadow-inner"
                       onClick={() => setEnlargedAngle(angle)}
                     >
-                      <img 
-                        src={`/maps/captured_nodes/node_${selectedNode.id}/${angle.toString().padStart(3, 0)}deg_rgb.png`}
+                      <img
+                        src={getNodeImageUrl(selectedNode, angle, activeMap)}
                         alt={`Node ${selectedNode.id} at ${angle}°`}
                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-500"
                         onError={(e) => {
@@ -687,11 +1236,51 @@ export default function MapView() {
                 </div>
               </div>
 
+              {/* Per-viewpoint semantic details */}
+              {selectedNode.viewpoints && Object.keys(selectedNode.viewpoints).length > 0 && (
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">方向语义</div>
+                  <div className="space-y-1.5">
+                    {PANORAMA_ANGLES.map(angle => {
+                      const vp = selectedNode.viewpoints?.[String(angle)];
+                      const sem = vp?.semantic_info;
+                      if (!sem) return null;
+                      const roomColor = confidenceColor(sem.confidence);
+                      return (
+                        <div key={angle} className={cn("text-xs rounded px-2 py-1.5 border", roomColor.bg, roomColor.border)}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-blue-400 w-8 shrink-0">{angle}°</span>
+                            <span className={cn("font-medium", roomColor.text)}>{sem.room_type_cn || sem.room_type}</span>
+                            <span className={cn("ml-auto text-[10px]", roomColor.text)}>{Math.round(sem.confidence * 100)}%</span>
+                          </div>
+                          {sem.objects && sem.objects.length > 0 && (
+                            <div className="flex flex-wrap gap-1 ml-10">
+                              {sem.objects.slice(0, 6).map((o, i) => {
+                                const objColor = confidenceColor(o.confidence);
+                                return (
+                                  <span key={i} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border", objColor.bg, objColor.border)}>
+                                    <span className={objColor.text}>{o.name_cn || o.name}</span>
+                                    <span className="text-[10px] text-slate-500">{Math.round(o.confidence * 100)}%</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="pt-2 border-t border-slate-800 flex flex-col gap-3">
                 <button
                   onClick={() => {
-                    const roomName = selectedNode.semantic_info?.room_type_cn || selectedNode.name;
-                    startTask(`去${roomName}`).catch(err => console.error('Navigate failed:', err));
+                    const { id, pose } = selectedNode;
+                    console.log('[NAV] executeNavigation:', `node_${id}`, pose);
+                    executeNavigation(id, pose.x, pose.y, pose.theta || 0)
+                      .then(res => console.log('[NAV] response:', res))
+                      .catch(err => console.error('[NAV] error:', err));
                   }}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
                 >
