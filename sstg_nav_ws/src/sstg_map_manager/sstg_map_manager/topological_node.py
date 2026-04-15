@@ -205,14 +205,45 @@ class SemanticInfo:
 
 
 @dataclass
+class Viewpoint:
+    """Single directional view at a topological node."""
+    angle: int                              # 0, 90, 180, 270
+    image_path: str = ""                    # 相对路径 (相对于 map session root)
+    depth_path: str = ""                    # 深度图相对路径
+    semantic_info: Optional[SemanticInfo] = None  # 该方向独立的 VLM 分析
+    capture_time: float = 0.0
+
+    def to_dict(self) -> Dict:
+        return {
+            'angle': self.angle,
+            'image_path': self.image_path,
+            'depth_path': self.depth_path,
+            'semantic_info': self.semantic_info.to_dict() if self.semantic_info else None,
+            'capture_time': self.capture_time,
+        }
+
+    @staticmethod
+    def from_dict(data: Dict) -> 'Viewpoint':
+        semantic_data = data.get('semantic_info')
+        return Viewpoint(
+            angle=data.get('angle', 0),
+            image_path=data.get('image_path', ''),
+            depth_path=data.get('depth_path', ''),
+            semantic_info=SemanticInfo.from_dict(semantic_data) if semantic_data else None,
+            capture_time=data.get('capture_time', 0.0),
+        )
+
+
+@dataclass
 class TopologicalNode:
     """Represents a node in the topological map."""
     node_id: int
     x: float
     y: float
     theta: float
-    panorama_paths: Dict[str, str] = field(default_factory=dict)  # {'0°': path, '90°': path, ...}
-    semantic_info: Optional[SemanticInfo] = None
+    viewpoints: Dict[int, Viewpoint] = field(default_factory=dict)  # angle → Viewpoint
+    panorama_paths: Dict[str, str] = field(default_factory=dict)  # 保留，向后兼容
+    semantic_info: Optional[SemanticInfo] = None  # 保留，聚合缓存
     name: str = ""
     created_time: float = 0.0
     last_updated: float = 0.0
@@ -224,6 +255,55 @@ class TopologicalNode:
             else:
                 self.name = f"拓扑点{self.node_id}"
 
+    def aggregate_semantic(self, strategy: str = 'union') -> None:
+        """Aggregate viewpoint-level SemanticInfo into node-level cache.
+
+        Uses voting for room_type, union for objects (keeps highest confidence).
+        """
+        infos = [
+            vp.semantic_info for vp in self.viewpoints.values()
+            if vp.semantic_info is not None
+        ]
+        if not infos:
+            return
+        if len(infos) == 1:
+            self.semantic_info = infos[0]
+            return
+
+        # Room type: majority vote
+        room_types = [info.room_type for info in infos]
+        room_type = max(set(room_types), key=room_types.count)
+
+        # Room type CN: pick from winner
+        room_type_cn = ''
+        for info in infos:
+            if info.room_type == room_type and info.room_type_cn:
+                room_type_cn = info.room_type_cn
+                break
+
+        # Confidence: average
+        avg_confidence = sum(info.confidence for info in infos) / len(infos)
+
+        # Objects: union with highest confidence per object
+        obj_dict: Dict[str, 'SemanticObject'] = {}
+        for info in infos:
+            for obj in info.objects:
+                key = (obj.name or obj.name_cn or '').lower()
+                if key and (key not in obj_dict or obj.confidence > obj_dict[key].confidence):
+                    obj_dict[key] = obj
+
+        # Description: join non-empty
+        descriptions = [info.description for info in infos if info.description]
+        description = ' | '.join(descriptions)
+
+        self.semantic_info = SemanticInfo(
+            room_type=room_type,
+            room_type_cn=room_type_cn,
+            confidence=avg_confidence,
+            objects=list(obj_dict.values()),
+            description=description,
+        )
+
     def to_dict(self):
         """Convert to dictionary for JSON serialization."""
         return {
@@ -234,6 +314,10 @@ class TopologicalNode:
                 'y': self.y,
                 'theta': self.theta,
             },
+            'viewpoints': {
+                str(angle): vp.to_dict()
+                for angle, vp in sorted(self.viewpoints.items())
+            },
             'panorama_paths': self.panorama_paths,
             'semantic_info': self.semantic_info.to_dict() if self.semantic_info else None,
             'created_time': self.created_time,
@@ -242,19 +326,36 @@ class TopologicalNode:
 
     @staticmethod
     def from_dict(data: Dict):
-        """Create TopologicalNode from dictionary."""
+        """Create TopologicalNode from dictionary. Backward-compatible with old format."""
         pose = data.get('pose', {})
         semantic_data = data.get('semantic_info')
-        semantic_info = None
-        
-        if semantic_data:
-            semantic_info = SemanticInfo.from_dict(semantic_data)
-        
+        semantic_info = SemanticInfo.from_dict(semantic_data) if semantic_data else None
+
+        # Load viewpoints (new format)
+        viewpoints: Dict[int, Viewpoint] = {}
+        vp_data = data.get('viewpoints', {})
+        if vp_data:
+            for angle_str, vp_dict in vp_data.items():
+                angle = int(angle_str)
+                viewpoints[angle] = Viewpoint.from_dict(vp_dict)
+        else:
+            # Backward compat: build viewpoints from old panorama_paths
+            panorama_paths = data.get('panorama_paths', {})
+            for angle_key, img_path in panorama_paths.items():
+                # angle_key is like '0°', '90°', etc.
+                angle = int(angle_key.replace('°', ''))
+                viewpoints[angle] = Viewpoint(
+                    angle=angle,
+                    image_path=img_path,
+                    semantic_info=semantic_info,  # share node-level semantic
+                )
+
         return TopologicalNode(
             node_id=data.get('id', -1),
             x=pose.get('x', 0.0),
             y=pose.get('y', 0.0),
             theta=pose.get('theta', 0.0),
+            viewpoints=viewpoints,
             panorama_paths=data.get('panorama_paths', {}),
             semantic_info=semantic_info,
             name=data.get('name', ''),

@@ -22,22 +22,47 @@ logger = logging.getLogger(__name__)
 
 class MapManagerNode(Node):
     """ROS2 Node for topological map management."""
-    
+
     def __init__(self):
         super().__init__('map_manager_node')
-        
-        # Declare parameters
-        default_map = os.path.join(
-            os.path.expanduser('~'),
-            'wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/maps/topological_map_manual.json')
-        self.declare_parameter('map_file', default_map)
-        self.declare_parameter('frame_id', 'map')
-        self.declare_parameter('graph_type', 'DiGraph')
-        
+
+        # Resolve package share directory (ROS2 standard) for maps/config
+        try:
+            from ament_index_python.packages import get_package_share_directory
+            share_dir = get_package_share_directory('sstg_map_manager')
+        except Exception:
+            share_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Load config file to get defaults
+        config_path = os.path.join(share_dir, 'config', 'map_config.yaml')
+        cfg_defaults = {}
+        cfg = {}
+        if os.path.exists(config_path):
+            import yaml
+            with open(config_path, 'r') as f:
+                cfg = yaml.safe_load(f) or {}
+            cfg_defaults = cfg.get('general', {})
+
+        # Declare parameters (config file values override hardcoded defaults)
+        self.declare_parameter('maps_root', os.path.join(share_dir, 'maps'))
+        self.declare_parameter('active_map', cfg_defaults.get('active_map', 'default'))
+        self.declare_parameter('frame_id', cfg_defaults.get('frame_id', 'map'))
+        self.declare_parameter('graph_type', cfg.get('network', {}).get('graph_type', 'DiGraph'))
+
         # Get parameters
-        self.map_file = self.get_parameter('map_file').value
+        self.maps_root = self.get_parameter('maps_root').value
+        self.active_map = self.get_parameter('active_map').value
         self.frame_id = self.get_parameter('frame_id').value
         self.graph_type = self.get_parameter('graph_type').value
+
+        # Resolve map session paths
+        self.session_dir = os.path.join(self.maps_root, self.active_map)
+        self.map_file = os.path.join(self.session_dir, 'topological_map.json')
+        self.capture_root = os.path.join(self.session_dir, 'captured_nodes')
+
+        # Ensure directories exist
+        os.makedirs(self.session_dir, exist_ok=True)
+        os.makedirs(self.capture_root, exist_ok=True)
         
         # Initialize topological map
         self.topo_map = TopologicalMap(
@@ -84,7 +109,8 @@ class MapManagerNode(Node):
         )
         
         self.get_logger().info(
-            f"Map Manager Node initialized. Map file: {self.map_file}, "
+            f"Map Manager Node initialized. Session: {self.active_map}, "
+            f"Map file: {self.map_file}, "
             f"Nodes: {self.topo_map.get_node_count()}"
         )
     
@@ -115,52 +141,56 @@ class MapManagerNode(Node):
     
     def _handle_query_semantic(self, request: QuerySemantic.Request,
                               response: QuerySemantic.Response) -> QuerySemantic.Response:
-        """Handle query semantic service request."""
+        """Handle query semantic service request. Returns matched angles per node."""
         try:
-            # Parse query string (simple format: "room_type:living_room" or "object:sofa")
             query = request.query.strip()
             node_ids = []
-            
+            matched_angles = []
+
             if query.startswith('room_type:'):
                 room_type = query.replace('room_type:', '')
                 node_ids = self.topo_map.query_by_room_type(room_type)
+                matched_angles = [-1] * len(node_ids)  # room_type is node-level
             elif query.startswith('object:'):
                 object_name = query.replace('object:', '')
-                node_ids = self.topo_map.query_by_object(object_name)
-            
+                results = self.topo_map.query_by_object_with_angles(object_name)
+                for nid, angles in results:
+                    node_ids.append(nid)
+                    # Use first matching angle, or -1 if node-level only
+                    matched_angles.append(angles[0] if angles else -1)
+
             # Convert nodes to semantic data
             semantic_data_list = []
             for node_id in node_ids:
                 node = self.topo_map.get_node(node_id)
                 if node and node.semantic_info:
-                    # Convert to sstg_msgs/SemanticData
                     sem_msg = SemanticData()
                     sem_msg.room_type = node.semantic_info.room_type
                     sem_msg.confidence = node.semantic_info.confidence
                     sem_msg.description = node.semantic_info.description
-                    
-                    # Note: objects array would be populated similarly
                     semantic_data_list.append(sem_msg)
-            
+
             response.node_ids = node_ids
             response.semantics = semantic_data_list
+            response.matched_angles = matched_angles
             response.success = True
             response.message = f"Found {len(node_ids)} matching nodes"
-            
+
         except Exception as e:
             response.success = False
             response.message = f"Error querying semantic: {str(e)}"
             self.get_logger().error(response.message)
-        
+
         return response
     
     def _handle_update_semantic(self, request: UpdateSemantic.Request,
                                response: UpdateSemantic.Response) -> UpdateSemantic.Response:
-        """Handle update semantic service request."""
+        """Handle update semantic service request. Supports per-viewpoint updates."""
         try:
             node_id = request.node_id
             sem_data = request.semantic_data
-            
+            angle = request.angle  # -1 = node-level, 0/90/180/270 = viewpoint-level
+
             # Convert ROS message to SemanticInfo
             objects = [
                 SemanticObject(
@@ -171,28 +201,46 @@ class MapManagerNode(Node):
                 )
                 for obj in sem_data.objects
             ]
-            
+
             semantic_info = SemanticInfo(
                 room_type=sem_data.room_type,
                 confidence=sem_data.confidence,
                 objects=objects,
                 description=sem_data.description
             )
-            
-            success = self.topo_map.update_semantic(node_id, semantic_info)
-            
-            response.success = success
-            response.message = f"Updated semantic for node {node_id}" if success else "Node not found"
-            
+
+            node = self.topo_map.get_node(node_id)
+            if not node:
+                response.success = False
+                response.message = f"Node {node_id} not found"
+                return response
+
+            if angle >= 0:
+                # Per-viewpoint update
+                from .topological_node import Viewpoint
+                if angle not in node.viewpoints:
+                    node.viewpoints[angle] = Viewpoint(angle=angle)
+                node.viewpoints[angle].semantic_info = semantic_info
+                import time
+                node.viewpoints[angle].capture_time = time.time()
+                # Re-aggregate node-level semantic
+                node.aggregate_semantic()
+                node.last_updated = time.time()
+                response.message = f"Updated viewpoint {angle}° for node {node_id}, aggregated"
+            else:
+                # Node-level update (backward compat)
+                success = self.topo_map.update_semantic(node_id, semantic_info)
+                response.message = f"Updated semantic for node {node_id}" if success else "Update failed"
+
+            response.success = True
             self.get_logger().info(response.message)
-            if success:
-                self.save_map()
-            
+            self.save_map()
+
         except Exception as e:
             response.success = False
             response.message = f"Error updating semantic: {str(e)}"
             self.get_logger().error(response.message)
-        
+
         return response
     
     def _handle_get_node_pose(self, request: GetNodePose.Request,

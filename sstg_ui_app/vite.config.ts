@@ -2,6 +2,8 @@ import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import http from 'http'
 import https from 'https'
+import fs from 'fs'
+import path from 'path'
 import { spawn, execSync, ChildProcess } from 'child_process'
 import chatSyncPlugin from './vite-plugins/chatSyncPlugin'
 
@@ -268,9 +270,69 @@ function backendLauncherPlugin(): Plugin {
   };
 }
 
+/**
+ * Map Sessions Plugin — 自动发现 sstg_map_manager/maps/ 下的地图 sessions
+ *
+ * GET /api/map-sessions → 返回所有 session 列表 (含 pgm/yaml/topo 路径)
+ * GET /map-sessions/{session}/{file} → 静态文件服务
+ */
+function mapSessionsPlugin(): Plugin {
+  const MAPS_ROOT = path.resolve(__dirname, '../sstg_nav_ws/src/sstg_map_manager/maps');
+
+  return {
+    name: 'map-sessions',
+    configureServer(server) {
+      // API: list sessions
+      server.middlewares.use('/api/map-sessions', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        try {
+          const sessions: any[] = [];
+          if (!fs.existsSync(MAPS_ROOT)) { res.end('[]'); return; }
+          for (const dir of fs.readdirSync(MAPS_ROOT, { withFileTypes: true })) {
+            if (!dir.isDirectory() || dir.name === 'default') continue;
+            const sdir = path.join(MAPS_ROOT, dir.name);
+            const hasTopo = fs.existsSync(path.join(sdir, 'topological_map.json'));
+            // find grid map (pgm)
+            const pgmFiles = fs.readdirSync(sdir).filter(f => f.endsWith('.pgm'));
+            const yamlFiles = fs.readdirSync(sdir).filter(f => f.endsWith('.yaml'));
+            sessions.push({
+              id: dir.name,
+              label: dir.name,
+              hasTopo,
+              hasPgm: pgmFiles.length > 0,
+              pgm: pgmFiles[0] || null,
+              yaml: yamlFiles[0] || null,
+            });
+          }
+          res.end(JSON.stringify(sessions));
+        } catch (e: any) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+
+      // Static file serving for /map-sessions/
+      server.middlewares.use('/map-sessions', (req, res, next) => {
+        const filePath = path.join(MAPS_ROOT, decodeURIComponent(req.url || ''));
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeTypes: Record<string, string> = {
+            '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+            '.pgm': 'application/octet-stream', '.yaml': 'text/yaml',
+          };
+          res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+          fs.createReadStream(filePath).pipe(res);
+        } else {
+          next();
+        }
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), llmProxyPlugin(), backendLauncherPlugin(), chatSyncPlugin()],
+  plugins: [react(), llmProxyPlugin(), backendLauncherPlugin(), chatSyncPlugin(), mapSessionsPlugin()],
   server: {
     host: '0.0.0.0',
     port: 5173,
