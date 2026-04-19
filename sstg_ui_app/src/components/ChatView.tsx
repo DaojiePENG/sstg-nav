@@ -3,10 +3,11 @@ import ReactMarkdown from "react-markdown";
 import { Send, Bot, User, Cpu, MapPin, Activity, AlertCircle, Loader2, Navigation, Plus, MessageSquare, Trash2, Edit2, BrainCircuit, Globe, ShieldAlert, Key, Zap, Server, Timer, X, Eye, EyeOff, Map as MapIcon, Save, CheckCircle2, Mic, Clock, MessageCircle, Compass, Route, Paperclip, Image as ImageIcon } from "lucide-react";
 import { useRosStore } from "../store/rosStore";
 import { useChatStore, getUsername } from "../store/chatStore";
-import type { QueueItem, ImageAttachment } from "../store/chatStore";
+import type { QueueItem, ImageAttachment, ChatMessage } from "../store/chatStore";
 import { useMapStore } from "../store/mapStore";
 import { useVoiceInput } from "../hooks/useVoiceInput";
 import { cn } from "../lib/utils";
+import { detectObjectMention, fetchKnownObjectVocab } from "../lib/objectMention";
 
 const DIAGNOSTIC_TIMEOUT_SEC = 45;
 const DIAGNOSTIC_RETRIES = 2;
@@ -134,7 +135,7 @@ function avatarFor(name: string): { letter: string; color: string } {
 }
 
 /** 状态是否为进行中 */
-const IN_PROGRESS_STATES = new Set(['queued', 'understanding', 'planning', 'navigating', 'exploring', 'searching', 'checking']);
+const IN_PROGRESS_STATES = new Set(['queued', 'understanding', 'planning', 'navigating', 'exploring', 'searching', 'checking', 'awaiting_confirmation']);
 const TERMINAL_STATES = new Set(['completed', 'failed', 'canceled']);
 
 /** 状态标签 — 用于思考过程指示条，不是聊天正文 */
@@ -147,6 +148,7 @@ function statusLabel(state: string, _message: string): string {
     case 'exploring':     return '探索环境中...';
     case 'searching':     return '搜索中...';
     case 'checking':      return '确认目标中...';
+    case 'awaiting_confirmation': return '等待确认...';
     case 'completed':     return '任务完成';
     case 'failed':        return '任务失败';
     case 'canceled':      return '已取消';
@@ -160,7 +162,7 @@ export default function ChatView() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  const { startTask, cancelTask, taskStatus, robotPose, isConnected, updateLLMConfig } = useRosStore();
+  const { startTask, cancelTask, confirmTask, taskStatus, robotPose, isConnected, updateLLMConfig } = useRosStore();
   
   const {
     sessions,
@@ -183,6 +185,7 @@ export default function ChatView() {
     switchSession,
     deleteSession,
     renameSession,
+    updateMessageMeta,
     setActiveProvider,
     updateProviderConfig,
     addProvider,
@@ -213,6 +216,13 @@ export default function ChatView() {
   );
   useEffect(() => {
     localStorage.setItem("sstg_chat_mode", chatMode);
+  }, [chatMode]);
+
+  // Round 7: 导航模式已知物品词表（记忆触发用）
+  const vocabRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (chatMode !== "navigate") return;
+    fetchKnownObjectVocab().then(v => { vocabRef.current = v; }).catch(() => {});
   }, [chatMode]);
 
   // 流式消息
@@ -290,6 +300,11 @@ export default function ChatView() {
       }
     });
   }, [messages, isTyping, activeSessionId, autoScrollToBottom]);
+
+  // 组件挂载（从其他页面切回）时强制滚到底部
+  useEffect(() => {
+    requestAnimationFrame(() => autoScrollToBottom(true));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 流式输出时持续跟随滚动
   useEffect(() => {
@@ -380,7 +395,7 @@ export default function ChatView() {
   }, [showSettings, activeProvider]);
 
   // ── 流式聊天发送（绕过 ROS，直接 HTTP SSE）──
-  const handleStreamChat = useCallback(async (text: string, mapContext: string, images?: PendingImage[]) => {
+  const handleStreamChat = useCallback(async (text: string, mapContext: string, images?: PendingImage[], rosHandling?: boolean, userPreCreated?: boolean) => {
     const controller = new AbortController();
     streamAbortRef.current = controller;
     setStreamingText("");
@@ -404,13 +419,17 @@ export default function ChatView() {
           senderName: getUsername(),
           mapContext,
           images: imagePayload,
+          ...(rosHandling ? { rosHandling: true } : {}),
+          ...(userPreCreated ? { userPreCreated: true } : {}),
         }),
         signal: controller.signal,
       });
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        await addMessage({ role: "user", content: text });
+        if (!userPreCreated) {
+          await addMessage({ role: "user", content: text });
+        }
         await addMessage({ role: "robot", content: err.error || "流式连接失败", meta: { status: "failed" } });
         return;
       }
@@ -529,6 +548,65 @@ export default function ChatView() {
     e.preventDefault();
   }, []);
 
+  const handleChatAction = async (actionId: string, msg: ChatMessage) => {
+    const taskId = msg.meta?.taskId || '';
+    const recallTarget = msg.meta?.recallTarget || '';
+    await updateMessageMeta(msg.id, { actionsDisabled: true });
+    try {
+      if (actionId === 'confirm_search') {
+        await confirmTask(taskId, true);
+      } else if (actionId === 'cancel_search') {
+        await confirmTask(taskId, false);
+        // Tell the chat backend to drop any late search_* events for this task.
+        fetch('/api/chat/ros-task/abandon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: activeSessionId, task_id: taskId }),
+        }).catch(() => {});
+      } else if (actionId === 'goto_nav') {
+        // Round 7: 记忆命中 → 真去现场确认，走现有 locate_object pipeline
+        if (!recallTarget) return;
+        if (!isConnected) {
+          await addMessage({ role: "robot", content: '机器人未连接，暂时过不去哦~', meta: { status: 'failed' } });
+          return;
+        }
+        // 预授权：下一条 search_confirmation_request 自动确认（避免重复弹框）
+        await fetch('/api/chat/auto-confirm/arm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: activeSessionId }),
+        }).catch(() => {});
+        const cmd = `帮我找${recallTarget}`;
+        const result = await startTask(cmd, 'home', activeSessionId, getUsername());
+        if (!result.success) {
+          await addMessage({ role: "robot", content: `任务启动失败: ${result.error_message}`, meta: { status: 'failed' } });
+        }
+      } else if (actionId === 'full_search') {
+        // Round 7: 记忆未命中 → 各节点通配搜索，走 §16.6 兜底
+        if (!recallTarget) return;
+        if (!isConnected) {
+          await addMessage({ role: "robot", content: '机器人未连接，暂时没法跑一圈哦~', meta: { status: 'failed' } });
+          return;
+        }
+        // 预授权：下一条 search_confirmation_request 自动确认
+        await fetch('/api/chat/auto-confirm/arm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: activeSessionId }),
+        }).catch(() => {});
+        const cmd = `帮我在所有节点找${recallTarget}`;
+        const result = await startTask(cmd, 'home', activeSessionId, getUsername());
+        if (!result.success) {
+          await addMessage({ role: "robot", content: `任务启动失败: ${result.error_message}`, meta: { status: 'failed' } });
+        }
+      } else if (actionId === 'skip_recall') {
+        await addMessage({ role: "robot", content: '好的，那就先不找了~', meta: { status: 'completed' } });
+      }
+    } catch (err) {
+      console.error("handleChatAction error:", err);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() && pendingImages.length === 0) return;
     const text = input.trim();
@@ -544,6 +622,12 @@ export default function ChatView() {
       await addMessage({ role: "user", content: text });
       try {
         await cancelTask();
+        // Clear any active search task — late search_* events will be dropped.
+        fetch('/api/chat/ros-task/abandon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: activeSessionId }),
+        }).catch(() => {});
         await addMessage({ role: "robot", content: '好的，已经停下来了~', meta: { status: 'completed' } });
       } catch {
         await addMessage({ role: "robot", content: '我现在没有在执行任务哦~', meta: { status: 'completed' } });
@@ -581,15 +665,41 @@ export default function ChatView() {
       return;
     }
 
+    // ── Round 7: 导航模式记忆触发 —— 用户提及已知/候选物品时拦截 ──
+    if (chatMode === "navigate" && text) {
+      const mention = detectObjectMention(text, vocabRef.current);
+      if (mention.kind !== 'none') {
+        // 先落用户消息，再由后端合成记忆回复并 SSE 广播
+        await addMessage({ role: "user", content: text });
+        try {
+          const resp = await fetch('/api/chat/memory-recall', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: activeSessionId, target: mention.target }),
+          });
+          if (!resp.ok) {
+            await addMessage({ role: "robot", content: '记忆查询失败了，要不换种说法再试试？', meta: { status: 'failed' } });
+          }
+        } catch (err) {
+          console.error('[memory-recall] failed:', err);
+          await addMessage({ role: "robot", content: '记忆查询失败了，要不换种说法再试试？', meta: { status: 'failed' } });
+        }
+        return;  // 不管成败都终止原流程（用户消息已落盘）
+      }
+    }
+
     // ── 导航/探索模式：走 ROS 链路 ──
     if (!isConnected) return;
     if (!text) return; // 没有文字也没有图片了（图片已上面处理）
+
+    // 先落用户消息，锁定消息时间线。startTask 返回后 ROS 管线异步触发
+    // search_confirmation_request，必须确保用户消息先于确认消息进入会话。
+    await addMessage({ role: "user", content: text });
 
     try {
       const result = await startTask(text, mapContext, activeSessionId, getUsername());
 
       if (!result.success) {
-        await addMessage({ role: "user", content: text });
         await addMessage({ role: "robot", content: `任务启动失败: ${result.error_message}`, meta: { status: 'failed' } });
 
       } else if (result.intent === 'queued') {
@@ -611,38 +721,30 @@ export default function ChatView() {
         }
 
       } else {
-        // 检查意图是否被当前模式允许
-        const intent = result.intent || 'conversation';
-        const modeConf = MODE_CONFIG[chatMode];
-        const isConversation = new Set(["conversation", "chat", "query_info"]).has(intent);
+        const intent = result.intent || '';
 
-        if (isConversation) {
-          // conversation 意图：走流式（即使在导航/探索模式下）
-          handleStreamChat(text, mapContext);
+        // intent 非空且明确为对话类 → 走流式 LLM（用户消息已预先创建）
+        if (intent && new Set(["conversation", "chat", "query_info"]).has(intent)) {
+          handleStreamChat(text, mapContext, undefined, false, true);
           return;
         }
 
-        if (!modeConf.allowedIntents.has(intent)) {
-          // 意图被当前模式拒绝 → 友好回复
-          const rejectMsg = MODE_REJECT_MESSAGES[chatMode]?.[intent] || "当前模式不支持这个操作哦~";
-          await addMessage({ role: "user", content: text });
-          await addMessage({ role: "robot", content: rejectMsg, meta: { status: 'completed' } });
-          return;
+        // intent 非空且被当前模式拒绝 → 友好回复
+        if (intent) {
+          const modeConf = MODE_CONFIG[chatMode];
+          if (!modeConf.allowedIntents.has(intent)) {
+            const rejectMsg = MODE_REJECT_MESSAGES[chatMode]?.[intent] || "当前模式不支持这个操作哦~";
+            await addMessage({ role: "robot", content: rejectMsg, meta: { status: 'completed' } });
+            return;
+          }
         }
 
-        // 正常处理 → 消息进聊天区 + robot 占位
-        await addMessage({ role: "user", content: text });
-        finalizeLastRobotMessage();
-        await addMessage({
-          role: "robot",
-          content: '',
-          meta: { status: "understanding", steps: [] }
-        });
+        // ROS 任务已接收（intent 为空 = NLP 异步处理中）
+        handleStreamChat(text, mapContext, undefined, true, true);
       }
     } catch (err) {
       const errMsg = String(err);
       console.error("startTask error:", err);
-      await addMessage({ role: "user", content: text });
       await addMessage({ role: "robot", content: errMsg, meta: { status: 'failed' } });
     }
   };
@@ -1214,6 +1316,39 @@ export default function ChatView() {
                         <span className="text-xs">小拓正在思考...</span>
                       </span>
                     )}
+                  </div>
+                )}
+
+                {/* 操作按钮（确认搜索等） */}
+                {msg.meta?.actions && msg.meta.actions.length > 0 && !msg.meta.actionsDisabled && (
+                  <div className="flex gap-2 mt-2 ml-1">
+                    {msg.meta.actions.map((action: any) => (
+                      <button
+                        key={action.id}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                          action.style === 'primary'
+                            ? "bg-blue-500 text-white hover:bg-blue-600"
+                            : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+                        )}
+                        onClick={() => handleChatAction(action.id, msg)}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {msg.meta?.actionsDisabled && msg.meta?.actions && (
+                  <div className="flex gap-2 mt-2 ml-1">
+                    {msg.meta.actions.map((action: any) => (
+                      <button
+                        key={action.id}
+                        disabled
+                        className="px-4 py-1.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-500 cursor-not-allowed"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
                   </div>
                 )}
 

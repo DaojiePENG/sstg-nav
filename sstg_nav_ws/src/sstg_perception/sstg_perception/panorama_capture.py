@@ -13,15 +13,35 @@ import threading
 import time
 import math
 
+from sstg_perception.search_trace import search_trace as _search_trace_raw
+
+
+def _trace(msg: str) -> None:
+    """[SEARCH-TRACE] 日志：写入共享文件（stdout 由外部 logger_func 处理）."""
+    _search_trace_raw('panorama', msg, None)
+
+
+def _stream_and_trace(msg: str, logger_func: Callable) -> None:
+    """同时落盘 + 走外部 logger（ROS logger.info 或 print）."""
+    _trace(msg)
+    try:
+        logger_func(msg)
+    except Exception:
+        pass
+
 # Nav2导航
 try:
     from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
-    from geometry_msgs.msg import PoseStamped, Quaternion
+    from geometry_msgs.msg import PoseStamped, Quaternion, Twist
     import rclpy
     NAV2_AVAILABLE = True
 except ImportError:
     NAV2_AVAILABLE = False
     print("Warning: Nav2 Simple Commander not available")
+    try:
+        from geometry_msgs.msg import Twist
+    except ImportError:
+        Twist = None
 
 
 class PanoramaCapture:
@@ -55,7 +75,12 @@ class PanoramaCapture:
                  enable_navigation: bool = True,
                  heading_provider: Optional[Callable[[str], Optional[float]]] = None,
                  max_rotation_retries: int = 2,
-                 max_capture_retries: int = 2):
+                 max_capture_retries: int = 2,
+                 cmd_vel_publisher=None,
+                 rotation_max_angular_vel: float = 0.5,
+                 rotation_tolerance_deg: float = 2.0,
+                 rotation_timeout_s: float = 3.0,
+                 rotation_kp: float = 1.5):
         """
         初始化全景图采集器
 
@@ -64,6 +89,11 @@ class PanoramaCapture:
             storage_path: 图像存储路径
             image_format: 图像格式 ('png' or 'jpg')
             enable_navigation: 是否启用自动导航（False时仅原地采集）
+            cmd_vel_publisher: Twist publisher；非 None 时走 TF 闭环 cmd_vel 直驱
+            rotation_max_angular_vel: 最大角速度 rad/s
+            rotation_tolerance_deg: 到位容差 deg
+            rotation_timeout_s: 单次旋转超时 s
+            rotation_kp: 比例增益
         """
         # 先初始化日志函数（必须在最前面）
         self.get_logger_func = print
@@ -79,6 +109,13 @@ class PanoramaCapture:
         self.max_rotation_retries = max(1, int(max_rotation_retries))
         self.max_capture_retries = max(1, int(max_capture_retries))
 
+        # cmd_vel 直驱参数（None 时走旧 Nav2 spin 作为 fallback）
+        self.cmd_vel_pub = cmd_vel_publisher
+        self._rot_max_w = float(rotation_max_angular_vel)
+        self._rot_tol_rad = math.radians(float(rotation_tolerance_deg))
+        self._rot_timeout = float(rotation_timeout_s)
+        self._rot_kp = float(rotation_kp)
+
         # 状态
         self.images = {}  # {angle: image_array}
         self.image_paths = {}  # {angle: file_path}
@@ -86,6 +123,7 @@ class PanoramaCapture:
         self.timestamp = None
         self.pose = None
         self.current_heading_deg = 0.0
+        self._start_yaw_deg = 0.0  # capture_at_pose 入口锁定，4 方向相对此基准
         self.lock = threading.Lock()
 
         # 导航器 — 延迟初始化（只在首次需要时创建）
@@ -152,6 +190,14 @@ class PanoramaCapture:
         self._refresh_heading(frame_id)
         self._reset_current_panorama()
 
+        self.get_logger_func(
+            f'[SEARCH-TRACE] panorama.start node={node_id} '
+            f'angles={self.panorama_angles} wait={wait_after_rotation}s'
+        )
+        _trace(
+            f'[SEARCH-TRACE] panorama.start node={node_id} '
+            f'angles={self.panorama_angles} wait={wait_after_rotation}s'
+        )
         self.get_logger_func(f'\n{"="*60}')
         self.get_logger_func(f'🎯 Starting panorama capture at node {node_id}')
         self.get_logger_func(f'   Target: x={pose["x"]:.2f}, y={pose["y"]:.2f}, θ={pose["theta"]:.1f}°')
@@ -174,10 +220,29 @@ class PanoramaCapture:
                 self.get_logger_func(f'\n[Step 1/3] ⏭️  Skipping navigation, capturing at current location')
 
         # 步骤2: 旋转并采集四个方向
+        # 单角度失败时不再 fail-fast，改为 skip 当前角度继续下一个。
+        # 返回时带上 failed_angles / error_message，由上游决定是否接纳部分成功。
         self.get_logger_func(f'\n[Step 2/3] 📸 Capturing 4 directions...')
+        # 锁定 4 方向基准朝向：导航完成后/跳过导航后当前实时 yaw
+        self._refresh_heading(frame_id)
+        self._start_yaw_deg = float(self.current_heading_deg)
+        _trace(
+            f'[SEARCH-TRACE] panorama.start_yaw node={node_id} '
+            f'start_yaw_deg={self._start_yaw_deg:.1f}'
+        )
         all_paths = {}
+        failed_angles = []
+        error_messages = []
 
         for idx, angle in enumerate(self.panorama_angles):
+            self.get_logger_func(
+                f'[SEARCH-TRACE] panorama.angle_begin node={node_id} angle={angle} '
+                f'idx={idx+1}/{len(self.panorama_angles)}'
+            )
+            _trace(
+                f'[SEARCH-TRACE] panorama.angle_begin node={node_id} angle={angle} '
+                f'idx={idx+1}/{len(self.panorama_angles)}'
+            )
             self.get_logger_func(f'\n  Direction {idx+1}/4: {angle}°')
             image_path, error_message = self._capture_direction_with_retry(
                 angle=angle,
@@ -185,42 +250,98 @@ class PanoramaCapture:
                 wait_after_rotation=wait_after_rotation,
             )
             if image_path is None:
-                panorama_data = {
-                    'node_id': node_id,
-                    'pose': pose,
-                    'timestamp': self.timestamp,
-                    'images': all_paths,
-                    'complete': False,
-                    'failed_angle': angle,
-                    'error_message': error_message or f'Rotation to {angle}° failed',
-                }
-                metadata_path = self.save_metadata(panorama_data)
                 self.get_logger_func(
-                    f'✗ Panorama stopped at {angle}°, partial images kept: {len(all_paths)}'
+                    f'[SEARCH-TRACE] panorama.angle_end node={node_id} angle={angle} '
+                    f'result=fail msg="{error_message}"'
                 )
-                self.get_logger_func(f'  Partial metadata saved: {metadata_path.name}')
-                return panorama_data
+                _trace(
+                    f'[SEARCH-TRACE] panorama.angle_end node={node_id} angle={angle} '
+                    f'result=fail msg="{error_message}"'
+                )
+                self.get_logger_func(
+                    f'  ⚠️  {angle}° failed ({error_message}), skip-continue 到下一方向'
+                )
+                failed_angles.append(angle)
+                if error_message:
+                    error_messages.append(f'{angle}°: {error_message}')
+                continue
 
             all_paths[angle] = str(image_path)
+            self.get_logger_func(
+                f'[SEARCH-TRACE] panorama.angle_end node={node_id} angle={angle} '
+                f'result=ok path={image_path.name}'
+            )
+            _trace(
+                f'[SEARCH-TRACE] panorama.angle_end node={node_id} angle={angle} '
+                f'result=ok path={image_path.name}'
+            )
             self.get_logger_func(f'  ✓ Captured: {image_path.name}')
 
+        # 所有方向都尝试完，根据成功角度数判断结果
+        if not all_paths:
+            combined_err = '; '.join(error_messages) or 'All directions failed'
+            self.get_logger_func(
+                f'[SEARCH-TRACE] panorama.all_failed node={node_id} '
+                f'failed_angles={failed_angles}'
+            )
+            _trace(
+                f'[SEARCH-TRACE] panorama.all_failed node={node_id} '
+                f'failed_angles={failed_angles}'
+            )
+            panorama_data = {
+                'node_id': node_id,
+                'pose': pose,
+                'timestamp': self.timestamp,
+                'images': {},
+                'complete': False,
+                'failed_angle': failed_angles[0] if failed_angles else None,
+                'failed_angles': failed_angles,
+                'error_message': combined_err,
+            }
+            metadata_path = self.save_metadata(panorama_data)
+            self.get_logger_func(
+                f'✗ All {len(self.panorama_angles)} directions failed: {combined_err}'
+            )
+            self.get_logger_func(f'  Metadata saved: {metadata_path.name}')
+            return panorama_data
+
         # 步骤3: 保存元数据
+        is_complete = (len(failed_angles) == 0)
+        combined_err = '; '.join(error_messages)
         self.get_logger_func(f'\n[Step 3/3] 💾 Saving metadata...')
         panorama_data = {
             'node_id': node_id,
             'pose': pose,
             'timestamp': self.timestamp,
             'images': all_paths,
-            'complete': True,
-            'failed_angle': None,
-            'error_message': '',
+            'complete': is_complete,
+            'failed_angle': failed_angles[0] if failed_angles else None,
+            'failed_angles': failed_angles,
+            'error_message': combined_err,
         }
 
         metadata_path = self.save_metadata(panorama_data)
         self.get_logger_func(f'✓ Metadata saved: {metadata_path.name}')
 
+        _trace_tag = 'panorama.complete' if is_complete else 'panorama.partial'
+        self.get_logger_func(
+            f'[SEARCH-TRACE] {_trace_tag} node={node_id} '
+            f'captured_count={len(all_paths)} angles={list(all_paths.keys())} '
+            f'failed_angles={failed_angles}'
+        )
+        _trace(
+            f'[SEARCH-TRACE] {_trace_tag} node={node_id} '
+            f'captured_count={len(all_paths)} angles={list(all_paths.keys())} '
+            f'failed_angles={failed_angles}'
+        )
         self.get_logger_func(f'\n{"="*60}')
-        self.get_logger_func(f'✅ Panorama capture complete!')
+        if is_complete:
+            self.get_logger_func(f'✅ Panorama capture complete!')
+        else:
+            self.get_logger_func(
+                f'⚠️  Panorama partial: {len(all_paths)}/{len(self.panorama_angles)} '
+                f'directions captured, failed={failed_angles}'
+            )
         self.get_logger_func(f'   Node: {node_id}')
         self.get_logger_func(f'   Images: {len(all_paths)} directions')
         self.get_logger_func(f'   Location: {self.storage_path}/node_{node_id}/')
@@ -330,7 +451,97 @@ class PanoramaCapture:
 
     def _rotate_to_angle(self, angle_deg: float, frame_id: str) -> bool:
         """
-        原地旋转到指定角度
+        原地旋转到指定角度（相对 start_yaw_deg 基准）。
+
+        cmd_vel_pub 非 None → 走 TF 闭环直驱（稳定）
+        cmd_vel_pub 为 None → 走 Nav2 spin（旧路径，fallback）
+        """
+        if self.cmd_vel_pub is not None:
+            target_yaw_deg = self._start_yaw_deg + float(angle_deg)
+            return self._rotate_with_cmd_vel(target_yaw_deg, frame_id)
+        return self._rotate_with_nav2_spin(angle_deg, frame_id)
+
+    def _rotate_with_cmd_vel(self, target_yaw_deg: float, frame_id: str) -> bool:
+        """TF 闭环 + P 控制 cmd_vel 直驱旋转到 target_yaw_deg（绝对 map yaw）."""
+        target_yaw_rad = math.radians(target_yaw_deg)
+        t0 = time.time()
+        last_log_t = t0
+
+        # 防御：Nav2 若有遗留任务则取消（idle 无副作用）
+        try:
+            if self.navigator is not None:
+                self.navigator.cancelTask()
+        except Exception:
+            pass
+
+        while True:
+            self._refresh_heading(frame_id)
+            yaw_now_rad = math.radians(self.current_heading_deg)
+            err = self._normalize_angle(target_yaw_rad - yaw_now_rad)
+
+            if abs(err) < self._rot_tol_rad:
+                self._publish_twist(0.0)
+                time.sleep(0.2)  # 稳定一拍
+                _trace(
+                    f'[SEARCH-TRACE] rotate.cmd_vel.done '
+                    f'target={target_yaw_deg:.1f} yaw={self.current_heading_deg:.1f} '
+                    f'err_deg={math.degrees(err):.2f}'
+                )
+                self.get_logger_func(
+                    f'  ✓ cmd_vel rotate done: target={target_yaw_deg:.1f}° '
+                    f'yaw={self.current_heading_deg:.1f}° err={math.degrees(err):.2f}°'
+                )
+                return True
+
+            elapsed = time.time() - t0
+            if elapsed > self._rot_timeout:
+                self._publish_twist(0.0)
+                _trace(
+                    f'[SEARCH-TRACE] rotate.cmd_vel.timeout '
+                    f'target={target_yaw_deg:.1f} yaw={self.current_heading_deg:.1f} '
+                    f'err_deg={math.degrees(err):.2f} elapsed={elapsed:.2f}'
+                )
+                self.get_logger_func(
+                    f'  ✗ cmd_vel rotate timeout: target={target_yaw_deg:.1f}° '
+                    f'yaw={self.current_heading_deg:.1f}° err={math.degrees(err):.2f}° '
+                    f'elapsed={elapsed:.2f}s'
+                )
+                return False
+
+            w = math.copysign(min(abs(err) * self._rot_kp, self._rot_max_w), err)
+            self._publish_twist(w)
+
+            if time.time() - last_log_t > 0.5:
+                last_log_t = time.time()
+                _trace(
+                    f'[SEARCH-TRACE] rotate.cmd_vel.step '
+                    f'target={target_yaw_deg:.1f} yaw={self.current_heading_deg:.1f} '
+                    f'err_deg={math.degrees(err):.2f} w={w:.3f}'
+                )
+
+            time.sleep(0.05)  # 20 Hz
+
+    def _publish_twist(self, angular_z: float) -> None:
+        if Twist is None or self.cmd_vel_pub is None:
+            return
+        msg = Twist()
+        msg.angular.z = float(angular_z)
+        try:
+            self.cmd_vel_pub.publish(msg)
+        except Exception as exc:
+            self.get_logger_func(f'  ⚠️ cmd_vel publish failed: {exc}')
+
+    @staticmethod
+    def _normalize_angle(rad: float) -> float:
+        while rad > math.pi:
+            rad -= 2 * math.pi
+        while rad < -math.pi:
+            rad += 2 * math.pi
+        return rad
+
+    def _rotate_with_nav2_spin(self, angle_deg: float, frame_id: str) -> bool:
+        """
+        Fallback：原地旋转到指定角度（Nav2 spin BT）
 
         Args:
             angle_deg: 目标角度（度）

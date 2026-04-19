@@ -306,14 +306,19 @@ class ClickAndCaptureNode(Node):
             self.get_logger().warn('update_semantic service not available, skip semantic')
             return None
 
-        all_objects = []
         best_room_type = ''
         best_confidence = 0.0
         best_description = ''
+        all_results = []
 
         for path_entry in image_paths:
             parts = path_entry.split(':', 1)
-            image_path = parts[1] if len(parts) == 2 else path_entry
+            if len(parts) == 2:
+                angle_deg = int(parts[0])
+                image_path = parts[1]
+            else:
+                angle_deg = -1
+                image_path = path_entry
 
             req = AnnotateSemantic.Request()
             req.image_path = image_path
@@ -329,50 +334,48 @@ class ClickAndCaptureNode(Node):
                 self.get_logger().warn(f'annotate_semantic failed for {image_path}: {msg}')
                 continue
 
-            all_objects.extend(resp.objects)
             if resp.confidence > best_confidence:
                 best_room_type = resp.room_type
                 best_confidence = resp.confidence
                 best_description = resp.description
 
-        if not best_room_type and not all_objects:
-            return None
+            sem_data = SemanticData()
+            sem_data.room_type = resp.room_type
+            sem_data.confidence = resp.confidence
+            sem_data.description = resp.description
+            sem_data.objects = list(resp.objects)
 
-        unique_objects = []
-        seen = set()
-        for obj in all_objects:
-            if obj.name.lower() in seen:
+            upd_req = UpdateSemantic.Request()
+            upd_req.node_id = node_id
+            upd_req.semantic_data = sem_data
+            upd_req.angle = angle_deg
+            future = self.update_sem_cli.call_async(upd_req)
+            if not self._wait_future(future, 5.0):
+                self.get_logger().warn(f'update_semantic timed out for node {node_id} angle {angle_deg}')
                 continue
-            seen.add(obj.name.lower())
-            unique_objects.append(obj)
 
-        sem_data = SemanticData()
-        sem_data.room_type = best_room_type
-        sem_data.confidence = best_confidence
-        sem_data.description = best_description
-        sem_data.objects = unique_objects
+            upd_resp = future.result()
+            if not upd_resp or not upd_resp.success:
+                msg = upd_resp.message if upd_resp else 'timeout'
+                self.get_logger().warn(f'update_semantic failed for node {node_id} angle {angle_deg}: {msg}')
+                continue
 
-        req = UpdateSemantic.Request()
-        req.node_id = node_id
-        req.semantic_data = sem_data
-        future = self.update_sem_cli.call_async(req)
-        if not self._wait_future(future, 5.0):
-            self.get_logger().warn(f'update_semantic timed out for node {node_id}')
-            return None
+            all_results.append({
+                'angle': angle_deg,
+                'room_type': resp.room_type,
+                'objects': [o.name_cn or o.name for o in resp.objects],
+            })
 
-        resp = future.result()
-        if not resp or not resp.success:
-            msg = resp.message if resp else 'timeout'
-            self.get_logger().warn(f'update_semantic failed for node {node_id}: {msg}')
+        if not all_results:
             return None
 
         self.get_logger().info(
-            f'Updated semantic for node {node_id}: room={best_room_type}, objects={[o.name for o in unique_objects]}')
+            f'Updated semantic for node {node_id}: room={best_room_type}, viewpoints={len(all_results)}')
         return {
             'room_type': best_room_type,
             'confidence': best_confidence,
             'description': best_description,
-            'objects': [o.name for o in unique_objects],
+            'viewpoints': all_results,
         }
 
     def _image_paths_to_panorama_paths(self, image_paths):

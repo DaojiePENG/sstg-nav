@@ -44,6 +44,12 @@ interface ImageAttachment {
   alt?: string;
 }
 
+interface ChatAction {
+  id: string;
+  label: string;
+  style?: 'primary' | 'secondary' | 'danger';
+}
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'system' | 'robot';
@@ -59,6 +65,11 @@ interface ChatMessage {
     error?: string;
     statusText?: string;
     steps?: StatusStep[];
+    actions?: ChatAction[];
+    taskId?: string;
+    actionsDisabled?: boolean;
+    polishFor?: string;  // Round 6: 指向这条消息润色的"硬数据"消息 id
+    recallTarget?: string;  // Round 7: 记忆触发消息携带的归一化物品名
   };
 }
 
@@ -91,6 +102,19 @@ const ANNOTATED_DIR = path.join(DATA_DIR, 'images/annotated');
 
 const LLM_CONFIG_FILE = path.join(DATA_DIR, 'llm-config.json');
 
+const SEARCH_TRACE_LOG = path.join(
+  process.env.HOME || '/home/daojie',
+  'sstg-data/logs/search_trace.log'
+);
+try { fs.mkdirSync(path.dirname(SEARCH_TRACE_LOG), { recursive: true }); } catch {}
+function traceSearch(msg: string, level: 'log' | 'warn' = 'log'): void {
+  try {
+    const ts = new Date().toISOString();
+    fs.appendFileSync(SEARCH_TRACE_LOG, `${ts} [pid=${process.pid}][vite] ${msg}\n`);
+  } catch {}
+  (level === 'warn' ? console.warn : console.log)(msg);
+}
+
 const HEARTBEAT_INTERVAL = 30_000;
 const SAVE_DEBOUNCE_MS = 1_000;
 
@@ -98,6 +122,22 @@ const SAVE_DEBOUNCE_MS = 1_000;
 
 let storeIndex: StoreIndex = { sessions: [], activeSessionId: '' };
 const sessionMessages: Map<string, ChatMessage[]> = new Map();
+// Tracks the authoritative active search task per session. Set on
+// `search_confirmation_request`; cleared by `/api/chat/ros-task/abandon`.
+// Any search_* ROS event whose task_id doesn't match is dropped as stale.
+const activeTaskBySession: Map<string, string> = new Map();
+// Round 7: sessions armed for auto-confirm — next `search_confirmation_request`
+// on these sessions is suppressed + auto-accepted (user already confirmed via
+// memory-recall bubble). Consumed on first match, 30s TTL.
+const autoConfirmArmed: Map<string, number> = new Map();
+function armAutoConfirm(sessionId: string) { autoConfirmArmed.set(sessionId, Date.now() + 30_000); }
+function consumeAutoConfirm(sessionId: string): boolean {
+  const until = autoConfirmArmed.get(sessionId);
+  if (!until) return false;
+  autoConfirmArmed.delete(sessionId);
+  if (Date.now() > until) return false;
+  return true;
+}
 
 // ── SSE Clients ────────────────────────────────────────
 
@@ -297,9 +337,10 @@ const SYSTEM_PROMPT = `你是小拓，一个真实存在的室内导航机器人
 
 1. 你的唯一名字是"小拓"。绝对不要说自己是Gemini、GPT、Claude、Qwen、DeepSeek、AI助手、数字大脑或任何其他名称。被问名字时只回答"我是小拓"。
 2. 你是一个有实体的机器人，你能在室内移动、观察环境、搜索物体。不要说"我没有实体/手臂/无法帮你找实物"之类的话。
-3. 当用户问某个物体在哪里/帮忙找东西时，系统会自动搜索拓扑地图并发送该物体所在节点的图片。你只需简短确认，比如"好的，我帮你找找看"或"我来查一下书包在哪个位置"。绝对不要说找不到、不要猜测位置、不要列举可能的地点，因为系统会替你完成搜索。
-4. 当用户要求"圈出/标出/框出"物体时，系统会自动标注并发送。你只需简短确认（如"好的，帮你标出来"），不要说做不到。
-5. 当用户要求发送某节点图片时，系统会自动搜索并附加图片。你只需简短确认（如"好的，这是xx所在位置的图片"），不要长篇描述。
+3. 当用户问某个物体在哪里/帮忙找东西时，你只需简短确认，比如"好的，我帮你找找看"或"我来查一下书包在哪个位置"。绝对不要说找不到、不要猜测位置、不要列举可能的地点，系统会替你完成搜索。
+4. 当用户要求"圈出/标出/框出"物体时，简短而有温度地确认：比如"好，这就帮你把「书包」圈出来～"、"收到，马上帮你标上「{物体}」～"。不要只说"好的稍等一下"。不要说做不到。
+5. 当用户要求发送某节点图片时，你只需简短确认（如"好的，马上帮你查"），不要长篇描述。
+6. 重要：你无法在回复中嵌入或发送图片。绝对不要在文字中提及"这是图片"、"请看图片"、"如图所示"、或用文字描述图片内容。图片由系统在单独的消息中发送，与你的文字回复完全独立。你只需要用简短的一句话确认操作即可。
 
 性格：友好、热心、像一个熟悉这个空间的好伙伴。
 说话风格：亲切自然，适当用语气词，简洁但有温度（1-3句话即可）。当用户有名字时，可以自然地称呼对方。
@@ -380,6 +421,156 @@ function buildTopoMapContext(): string {
   }
 }
 
+// Round 6: ROS 任务结果的后置 LLM 润色（ROS 先落稳一条"官方具体直接"的硬数据消息，
+// 紧随一条由 LLM 填充的温暖小拓回复；失败或 LLM 未配置时删除占位消息，不造成闪烁）
+const POLISH_EVENT_TYPES = new Set([
+  'search_node_observation',
+  // 'search_node_tentative' 取消润色：tentative 一条硬数据足够，避免与后续 finalize 重复铺陈
+  'search_target_found',
+  'search_task_summary',
+]);
+
+function _removePolishPlaceholder(sessionId: string, msgId: string): void {
+  const msgs = sessionMessages.get(sessionId);
+  if (!msgs) return;
+  const mi = msgs.findIndex(m => m.id === msgId);
+  if (mi < 0) return;
+  msgs.splice(mi, 1);
+  scheduleSave();
+  broadcast({ type: 'message_removed', sessionId, messageId: msgId });
+}
+
+function polishWithLLM(
+  sessionId: string,
+  polishMsg: ChatMessage,
+  evt: {
+    event_type: string;
+    text: string;
+    target_object?: string;
+    node_id?: number;
+    hit_angle?: number;
+    dist_hint?: string;
+    tier?: string;
+    via?: string;
+    confidence?: number;
+    backup_candidates?: any[];
+    description?: string;
+    hit_image_position?: number;
+  },
+): void {
+  const provider = llmConfigStore.providers[llmConfigStore.activeProvider];
+  if (!provider?.apiKey) {
+    _removePolishPlaceholder(sessionId, polishMsg.id);
+    return;
+  }
+
+  const hardData = evt.text || '';
+  const sys = [
+    '你是小拓，一个住在这屋子里的小机器人，正在和主人像朋友一样聊天。',
+    '系统刚给了你一条"搜索状态硬数据"，请你换成口语化、聊天感强的回复转达给主人。',
+    '严格遵守：',
+    '1. 不得改动或编造任何数字（节点号、角度、置信度百分比、"第 N 张图"的 N 必须一致；可以说"大概/差不多"等虚词）',
+    '2. 不得增加未提及的新位置/物体/步骤',
+    '3. 2 句以内，禁止 markdown、列表、emoji、表情符号',
+    '4. 第一人称"我"，不要自称小拓/AI/助手',
+    '5. 能力边界（必须遵守）：小拓只有摄像头+激光雷达+轮子，没有机械臂，不会拿/递/抓/捡东西；也不会在闲聊中承诺"靠近/凑近/走近/再看仔细点"这类动作——靠近是下一步导航的事，不由你在聊天里主动承诺。禁止出现"要我帮你拿/递给你/我再靠近点/我再凑近点/我走近看看/再看仔细点"等措辞。',
+    '6. 不自信/犹豫的措辞请收敛：避免"不太确定/拿不准/我也不知道/可能吧"；陈述观察就好。',
+    '7. 如果硬数据提到"看第 N 张图"，你也要自然地带出"第 N 张"的说法，方便主人对照图片',
+    '8. 可以带一句轻量的关心或好奇闲聊（"是要出门用吗？""是不是急着找它？""要不要我放大图片看看细节？"），但只说一句、不要过度卖萌，更不要承诺物理动作。',
+    '参考语气：',
+    '- 找到："诶，找到啦！第二张图就是——节点 4 的 90° 方向，那个黑色背包靠在墙角呢。是要出门用吗？"',
+    '- 疑似远处："节点 3 那边好像瞥到一眼，我先去下一个位置继续找。"',
+    '- 没找到："节点 5 没瞧见呢，我接着去下一个地方找。"',
+    '- 全搜完没找到："几个可能的位置都跑过了，真没找到这东西，是不是换个说法我再去碰碰运气？"',
+  ].join('\n');
+
+  const ctxLines: string[] = [`硬数据：${hardData}`];
+  if (evt.event_type === 'search_target_found') {
+    ctxLines.push(`场景：找到了 ${evt.target_object || '目标物'}（来源=${evt.via || ''}/${evt.tier || ''}）`);
+    if (evt.description) {
+      ctxLines.push(`视觉细节（可用来让描述更生动，不要照抄太长）：${evt.description}`);
+    }
+    if (evt.hit_image_position && evt.hit_image_position > 0) {
+      ctxLines.push(`图片位置：命中图是第 ${evt.hit_image_position} 张（请在回复里自然带出"第 ${evt.hit_image_position} 张"）`);
+    }
+  } else if (evt.event_type === 'search_node_observation') {
+    ctxLines.push('场景：当前节点没找到，即将去下一个位置继续搜');
+  } else if (evt.event_type === 'search_node_tentative') {
+    ctxLines.push(`场景：当前节点疑似看到，但距离 ${evt.dist_hint || '不明'}，我要去更近的位置再确认`);
+    if (evt.description) {
+      ctxLines.push(`视觉细节：${evt.description}`);
+    }
+  } else if (evt.event_type === 'search_task_summary') {
+    ctxLines.push('场景：所有候选位置都搜完了，依然没找到目标');
+  }
+  if (Array.isArray(evt.backup_candidates) && evt.backup_candidates.length > 0) {
+    const bk = evt.backup_candidates
+      .map((b: any) => {
+        const pct = Math.round((b.adj_conf || 0) * 100);
+        const unverified = (b.tier || '') === 'planner_hint' ? '·未现场确认' : '';
+        return `节点${b.node_id} ${b.hit_angle}°(${pct}%, ${b.dist_hint || ''}${unverified})`;
+      })
+      .join('、');
+    ctxLines.push(`另有备选位置可提（tier=planner_hint 表示只靠规划分，没去现场核实，措辞要体现"可能"而不是"看到"）：${bk}（温和地一笔带过，不要长列表）`);
+  }
+
+  const messages = [
+    { role: 'system', content: sys },
+    { role: 'user', content: ctxLines.join('\n') + '\n\n请用小拓的聊天语气，1-2 句话，结尾可以带一句朋友式的关心或好奇的小问题。' },
+  ];
+  const payload = JSON.stringify({
+    model: provider.model,
+    messages,
+    temperature: 0.5,
+    max_tokens: 200,
+    stream: false,
+  });
+
+  const apiUrl = new URL(provider.baseUrl.replace(/\/$/, '') + '/chat/completions');
+  const lib = apiUrl.protocol === 'https:' ? https : http_;
+  const options: http.RequestOptions = {
+    hostname: apiUrl.hostname,
+    port: apiUrl.port ? Number(apiUrl.port) : (apiUrl.protocol === 'https:' ? 443 : 80),
+    path: apiUrl.pathname + apiUrl.search,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${provider.apiKey}`,
+      'Content-Length': Buffer.byteLength(payload),
+    },
+    timeout: 12000,
+  };
+
+  const reqObj = lib.request(options, (resp) => {
+    let data = '';
+    resp.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+    resp.on('end', () => {
+      try {
+        const parsed = JSON.parse(data);
+        const polished = (parsed?.choices?.[0]?.message?.content || '').trim();
+        if (!polished) {
+          _removePolishPlaceholder(sessionId, polishMsg.id);
+          return;
+        }
+        polishMsg.content = polished;
+        polishMsg.meta = { ...(polishMsg.meta || {}), status: 'completed' };
+        scheduleSave();
+        broadcast({ type: 'message_updated', sessionId, messageId: polishMsg.id, message: polishMsg });
+      } catch (exc: any) {
+        traceSearch(`[SEARCH-TRACE] polish.parse_error type=${evt.event_type} err=${exc && exc.message}`, 'warn');
+        _removePolishPlaceholder(sessionId, polishMsg.id);
+      }
+    });
+  });
+  reqObj.on('timeout', () => { try { reqObj.destroy(new Error('polish_timeout')); } catch {} });
+  reqObj.on('error', (err) => {
+    traceSearch(`[SEARCH-TRACE] polish.req_error type=${evt.event_type} err=${err.message}`, 'warn');
+    _removePolishPlaceholder(sessionId, polishMsg.id);
+  });
+  reqObj.write(payload);
+  reqObj.end();
+}
+
 function buildStreamMessages(
   text: string,
   mapContext: string,
@@ -388,15 +579,38 @@ function buildStreamMessages(
   imageBase64List?: Array<{ base64: string; mimeType: string }>,
   providerName?: string,
   modelName?: string,
+  rosHandling?: boolean,
+  wantAnnotate?: boolean,
 ): Array<{role: string; content: any}> {
-  let sys = SYSTEM_PROMPT;
-  // 后端直接读取完整拓扑地图，替代前端传来的截断摘要
-  const topoContext = buildTopoMapContext();
-  if (topoContext) {
-    sys += `\n\n${topoContext}`;
-  } else if (mapContext) {
-    // fallback: 拓扑文件读取失败时使用前端传来的摘要
-    sys += `\n\n当前环境地图：\n${mapContext}`;
+  let sys: string;
+  // 标注意图优先：即便 ROS 搜索任务进行中，用户喊"圈出来"仍需正常回复 + 触发前端 grounding 管线
+  if (rosHandling && !wantAnnotate) {
+    // 搜索确认专属短模板：ROS 侧会独立发送带历史图和按钮的确认消息，
+    // LLM 只负责给出一句自然语言的 "好的" 级确认，不得越权。
+    sys = [
+      '你是小拓（室内导航机器人）。用户正在发起物体搜索，系统会在独立消息中发送历史记忆图和"去看看/不用了"按钮。',
+      '',
+      '严格禁止：',
+      '- 列举节点名称（不要说"节点3"、"客厅"、"走廊"）',
+      '- 提及图片（不要说"这是图片"、"我记得见过"、"拍到的图片"）',
+      '- 承诺或猜测搜索结果（不要说"我找到了"、"在某某房间"、"可能在..."）',
+      '',
+      '只允许从以下几句中选一句自然地回复，不加任何额外内容：',
+      '1. 好的，我这就帮你找找看～',
+      '2. 收到，马上帮你查一下～',
+      '3. 好嘞，稍等我一下，这就去瞅瞅～',
+      '4. 没问题，我去各个角落找找～',
+    ].join('\n');
+  } else {
+    sys = SYSTEM_PROMPT;
+    // 后端直接读取完整拓扑地图，替代前端传来的截断摘要
+    const topoContext = buildTopoMapContext();
+    if (topoContext) {
+      sys += `\n\n${topoContext}`;
+    } else if (mapContext) {
+      // fallback: 拓扑文件读取失败时使用前端传来的摘要
+      sys += `\n\n当前环境地图：\n${mapContext}`;
+    }
   }
 
   const model = (modelName || '').toLowerCase();
@@ -674,6 +888,40 @@ function scoreObjectMatch(objects: any[], aliases: string[], tags: string[], roo
   return score;
 }
 
+/** 规范化用户搜索目标词：去除 "我的/找/帮" 等前缀和 "在哪/的位置" 等后缀。
+ * 与后端 Python 版 `target_normalizer.normalize_search_target` 保持语义一致，
+ * 作为纵深防御 — 即便后端未归一化，前端也能把 "我的书包" → "书包"。 */
+function normalizeSearchTarget(raw: string): string {
+  if (!raw) return '';
+  let text = raw.trim();
+  if (!text) return '';
+
+  const prefixes = ['找我的', '帮我找', '到我的', '给我找', '我的', '找', '到', '帮', '给'];
+  for (const p of prefixes) {
+    if (text.startsWith(p) && text.length > p.length) {
+      text = text.slice(p.length);
+      break;
+    }
+  }
+
+  const suffixes = ['在哪里', '在哪', '的位置', '去哪了', '的图'];
+  for (const s of suffixes) {
+    if (text.endsWith(s) && text.length > s.length) {
+      text = text.slice(0, -s.length);
+      break;
+    }
+  }
+
+  const trailingStop = new Set(['的', '了', '吗', '呢', '吧', '在']);
+  while (text.length > 0 && trailingStop.has(text[text.length - 1])) {
+    text = text.slice(0, -1);
+  }
+
+  text = text.trim();
+  if (text.length <= 1) return '';
+  return text;
+}
+
 /** 搜索拓扑地图中包含指定物体的节点 → 返回节点信息和图片路径 (方向感知) */
 function searchTopoForObject(objectName: string): Array<{
   nodeId: number; nodeName: string; description: string;
@@ -681,7 +929,8 @@ function searchTopoForObject(objectName: string): Array<{
   matchScore: number;
   matchedAngles?: number[];
 }> {
-  const query = objectName.toLowerCase();
+  const normalized = normalizeSearchTarget(objectName) || objectName;
+  const query = normalized.toLowerCase();
   const results: Array<{
     nodeId: number; nodeName: string; description: string;
     images: Array<{ url: string; alt: string }>;
@@ -708,7 +957,24 @@ function searchTopoForObject(objectName: string): Array<{
           const vpEntries = Object.values(viewpoints) as any[];
           if (vpEntries.length === 0) continue;
 
-          // 逐方向匹配
+          // R8: 先用节点级 search_objects 的 best_confidence 门槛过滤，口径与 planner 一致。
+          // 没过门槛 → 直接跳过整节点，不走 viewpoint 兜底（避免幽灵候选）。
+          const searchObjects = (node.search_objects || {}) as Record<string, any>;
+          let passConfGate = false;
+          let gateBestConf = 0;
+          for (const [k, meta] of Object.entries(searchObjects)) {
+            const bestConf = Number((meta as any)?.best_confidence) || 0;
+            if (bestConf < 0.6) continue;
+            const names = [k, (meta as any)?.name || '', (meta as any)?.name_cn || '']
+              .map((n: string) => (n || '').toLowerCase());
+            if (names.some(n => n && (n === query || n.includes(query) || query.includes(n)))) {
+              passConfGate = true;
+              gateBestConf = Math.max(gateBestConf, bestConf);
+            }
+          }
+          if (!passConfGate) continue;
+
+          // 逐方向匹配图片（供气泡展示）
           const matchedImages: Array<{ url: string; alt: string; score: number; angle: number }> = [];
           for (const vp of vpEntries) {
             const vpSi = vp.semantic_info || {};
@@ -737,7 +1003,7 @@ function searchTopoForObject(objectName: string): Array<{
           if (matchedImages.length > 0) {
             // 按评分降序，最佳匹配图片排前面
             matchedImages.sort((a, b) => b.score - a.score);
-            const bestScore = matchedImages[0].score;
+            const bestScore = Math.max(matchedImages[0].score, gateBestConf);
             const aggSi = node.semantic_info || {};
             console.log(`[searchTopo] SESSION HIT: node=${node.id}, query="${query}", angles=[${matchedImages.map(m=>m.angle)}], score=${bestScore}, imgs=${matchedImages.length}`);
             results.push({
@@ -801,6 +1067,59 @@ function searchTopoForObject(objectName: string): Array<{
   }
 
   return results.sort((a, b) => b.matchScore - a.matchScore);
+}
+
+/** 已知物品词表（来自所有 session 地图 + legacy 手动地图），mtime 感知 30s 缓存 */
+let knownVocabCache: { value: string[]; computedAt: number; signature: string } | null = null;
+function buildKnownObjectVocab(): string[] {
+  const now = Date.now();
+  const files: string[] = [];
+  try {
+    if (fs.existsSync(SESSION_MAPS_ROOT)) {
+      for (const dir of fs.readdirSync(SESSION_MAPS_ROOT, { withFileTypes: true })) {
+        if (!dir.isDirectory()) continue;
+        const p = path.join(SESSION_MAPS_ROOT, dir.name, 'topological_map.json');
+        if (fs.existsSync(p)) files.push(p);
+      }
+    }
+  } catch {}
+  const legacyPath = path.join(process.cwd(), 'public/maps/topological_map_manual.json');
+  if (fs.existsSync(legacyPath)) files.push(legacyPath);
+
+  const signature = files.map(f => {
+    try { return `${f}:${fs.statSync(f).mtimeMs}`; } catch { return f; }
+  }).join('|');
+
+  if (knownVocabCache && knownVocabCache.signature === signature && now - knownVocabCache.computedAt < 5_000) {
+    return knownVocabCache.value;
+  }
+
+  const vocab = new Set<string>();
+  const pushName = (v: any) => {
+    if (typeof v !== 'string') return;
+    const t = v.trim();
+    if (!t || t.length < 1) return;
+    vocab.add(t);
+  };
+  for (const fp of files) {
+    try {
+      const topo = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+      for (const node of (topo.nodes || [])) {
+        const si = node.semantic_info || {};
+        for (const o of (si.objects || [])) { pushName(o.name); pushName(o.name_cn); }
+        const so = node.search_objects || {};
+        for (const k of Object.keys(so)) pushName(k);
+        const viewpoints = node.viewpoints || {};
+        for (const vp of Object.values(viewpoints) as any[]) {
+          const vsi = vp.semantic_info || {};
+          for (const o of (vsi.objects || [])) { pushName(o.name); pushName(o.name_cn); }
+        }
+      }
+    } catch {}
+  }
+  const value = Array.from(vocab);
+  knownVocabCache = { value, computedAt: now, signature };
+  return value;
 }
 
 /** 从用户文本中提取标注目标物体名 */
@@ -931,6 +1250,88 @@ export default function chatSyncPlugin(): Plugin {
         return jsonResponse(res, 200, { results });
       });
 
+      // ── Known Object Vocab (for navigate-mode mention detection) ──
+      server.middlewares.use('/api/topo/vocab', async (req, res) => {
+        if (req.method !== 'GET') return jsonResponse(res, 405, { error: 'GET only' });
+        return jsonResponse(res, 200, { vocab: buildKnownObjectVocab() });
+      });
+
+      // ── Round 7: Arm auto-confirm for next search_confirmation_request ──
+      server.middlewares.use('/api/chat/auto-confirm/arm', async (req, res) => {
+        if (req.method !== 'POST') return jsonResponse(res, 405, { error: 'POST only' });
+        const body = JSON.parse(await readBody(req) || '{}');
+        const sessionId = String(body.sessionId || '');
+        if (!sessionId) return jsonResponse(res, 400, { error: 'sessionId required' });
+        armAutoConfirm(sessionId);
+        return jsonResponse(res, 200, { ok: true, armed: true });
+      });
+
+      // ── Memory Recall (navigate-mode mention → synthetic confirm/miss msg) ──
+      server.middlewares.use('/api/chat/memory-recall', async (req, res) => {
+        if (req.method !== 'POST') return jsonResponse(res, 405, { error: 'POST only' });
+        const body = JSON.parse(await readBody(req) || '{}');
+        const sessionId = String(body.sessionId || '');
+        const target = String(body.target || '').trim();
+        if (!sessionId || !target) return jsonResponse(res, 400, { error: 'sessionId and target required' });
+
+        const msgs = sessionMessages.get(sessionId);
+        if (!msgs) return jsonResponse(res, 404, { error: 'Session not found' });
+
+        const canonical = normalizeSearchTarget(target) || target;
+        const topoResults = searchTopoForObject(canonical);
+
+        let message: ChatMessage;
+        if (topoResults.length > 0) {
+          // HIT → memory images + 去看看/不用了
+          const historyImages: ImageAttachment[] = [];
+          for (const r of topoResults.slice(0, 3)) {
+            for (const img of r.images.slice(0, 2)) {
+              historyImages.push({ id: genId('img'), url: img.url, alt: img.alt });
+            }
+          }
+          const nodeNames = topoResults.slice(0, 3)
+            .map(r => `${r.nodeName}(节点${r.nodeId})`).join('、');
+          message = {
+            id: genId('msg'),
+            role: 'robot',
+            content: `我记得在${nodeNames}见过${canonical}，这是当时拍到的图片。要不要我现在过去现场再确认一下？`,
+            timestamp: Date.now(),
+            images: historyImages.length > 0 ? historyImages : undefined,
+            meta: {
+              status: 'awaiting_confirmation',
+              statusText: 'memory_recall_hit',
+              actions: [
+                { id: 'goto_nav', label: '去看看', style: 'primary' },
+                { id: 'skip_recall', label: '不用了', style: 'secondary' },
+              ],
+              recallTarget: canonical,
+            },
+          };
+        } else {
+          // MISS → "没印象，帮你各节点找一找吗？"
+          message = {
+            id: genId('msg'),
+            role: 'robot',
+            content: `我记忆里暂时没有"${canonical}"的位置记录呢，要不要我去各个节点都帮你找一找？`,
+            timestamp: Date.now(),
+            meta: {
+              status: 'awaiting_confirmation',
+              statusText: 'memory_recall_miss',
+              actions: [
+                { id: 'full_search', label: '帮我找一找', style: 'primary' },
+                { id: 'skip_recall', label: '不用了', style: 'secondary' },
+              ],
+              recallTarget: canonical,
+            },
+          };
+        }
+
+        msgs.push(message);
+        scheduleSave();
+        broadcast({ type: 'message_added', sessionId, message });
+        return jsonResponse(res, 200, { ok: true, target: canonical, hit: topoResults.length > 0, messageId: message.id });
+      });
+
       // ── LLM Config API ────────────────────────────────
       server.middlewares.use('/api/llm-config', async (req, res) => {
         const method = req.method || 'GET';
@@ -958,7 +1359,7 @@ export default function chatSyncPlugin(): Plugin {
         }
 
         const body = JSON.parse(await readBody(req) || '{}');
-        const { sessionId, text, senderName, mapContext, images: rawImages } = body;
+        const { sessionId, text, senderName, mapContext, images: rawImages, rosHandling, userPreCreated } = body;
 
         if (!sessionId || !text) {
           return jsonResponse(res, 400, { error: 'sessionId and text required' });
@@ -993,31 +1394,35 @@ export default function chatSyncPlugin(): Plugin {
           }
         }
 
-        // 2) Save user message
+        // 2) Save user message (rosHandling/userPreCreated 时用户消息已由前端 addMessage 预创建)
         const msgs = sessionMessages.get(sessionId);
         if (!msgs) {
           return jsonResponse(res, 404, { error: 'Session not found' });
         }
 
-        const userMsg: ChatMessage = {
-          id: genId('msg'),
-          role: 'user',
-          content: text,
-          timestamp: Date.now(),
-          sender: senderName || undefined,
-          images: savedImages.length > 0 ? savedImages : undefined,
-        };
-        msgs.push(userMsg);
+        let userMsg: ChatMessage | null = null;
+        const skipUserMsgCreation = rosHandling || userPreCreated;
+        if (!skipUserMsgCreation) {
+          userMsg = {
+            id: genId('msg'),
+            role: 'user',
+            content: text,
+            timestamp: Date.now(),
+            sender: senderName || undefined,
+            images: savedImages.length > 0 ? savedImages : undefined,
+          };
+          msgs.push(userMsg);
 
-        // Auto-title
-        const session = storeIndex.sessions.find(s => s.id === sessionId);
-        if (session && msgs.filter(m => m.role === 'user').length === 1) {
-          session.title = text.slice(0, 12) + (text.length > 12 ? '...' : '');
-          session.updatedAt = Date.now();
+          // Auto-title
+          const session = storeIndex.sessions.find(s => s.id === sessionId);
+          if (session && msgs.filter(m => m.role === 'user').length === 1) {
+            session.title = text.slice(0, 12) + (text.length > 12 ? '...' : '');
+            session.updatedAt = Date.now();
+          }
+
+          scheduleSave();
+          broadcast({ type: 'message_added', sessionId, message: userMsg });
         }
-
-        scheduleSave();
-        broadcast({ type: 'message_added', sessionId, message: userMsg });
 
         // 3) Create robot message placeholder
         const robotMsg: ChatMessage = {
@@ -1038,7 +1443,7 @@ export default function chatSyncPlugin(): Plugin {
           'Connection': 'keep-alive',
           'Content-Encoding': 'identity',       // 禁用压缩 — 压缩器会攒数据导致卡顿
           'X-Accel-Buffering': 'no',            // 禁用 nginx/反代缓冲
-          'X-User-Msg-Id': userMsg.id,
+          'X-User-Msg-Id': userMsg?.id || '',
           'X-Robot-Msg-Id': robotMsg.id,
         });
         res.flushHeaders();
@@ -1059,10 +1464,23 @@ export default function chatSyncPlugin(): Plugin {
         // 5) Build messages and call LLM API with streaming
         const history = getRecentHistory(sessionId);
         const providerName = llmConfigStore.activeProvider;
+        // 前置检测：标注意图要在 buildStreamMessages 之前识别出来，才能在 ROS 搜索进行中也让 LLM 走完整 prompt（而非被短模板锁死为"好的稍等一下"）
+        const annotatePattern = /圈出|标出|标注|框出|画出|圈.*给我|标.*给我|框.*发/;
+        const imageReqPattern = /图片|照片|看看.*图|拍.*照|发.*图|全景|看看|找.*发|找出来|找到|找一下|找找|在哪|发给我/;
+        const creativePattern = /画一|画幅|画张|画个|画.*画|写一|写首|写篇|生成.*图|创作|设计一|编一/;
+        const hasUserImage = savedImages.length > 0;
+        const isCreative = creativePattern.test(text);
+        const wantAnnotate = !isCreative && annotatePattern.test(text);
+        const wantRetrieve = !isCreative && imageReqPattern.test(text) && !hasUserImage;
+        const targetObj = wantAnnotate ? extractAnnotationTarget(text) : '';
+        const finalTarget = targetObj || (wantAnnotate ? extractTargetFromContext(sessionId) : '');
+
         const llmMessages = buildStreamMessages(
           text, mapContext || '', history, senderName || '',
           imageBase64List.length > 0 ? imageBase64List : undefined,
           providerName, provider.model,
+          rosHandling,
+          wantAnnotate,
         );
 
         const apiUrl = new URL(provider.baseUrl.replace(/\/$/, '') + '/chat/completions');
@@ -1141,20 +1559,8 @@ export default function chatSyncPlugin(): Plugin {
             broadcast({ type: 'message_updated', sessionId, messageId: robotMsg.id, message: robotMsg });
             sendSSE('done', { content: robotMsg.content, msgId: robotMsg.id });
 
-            // ── 检测是否需要图片操作（检索/标注）──
-            const annotatePattern = /圈出|标出|标注|框出|画出|圈.*给我|标.*给我|框.*发/;
-            const imageReqPattern = /图片|照片|看看.*图|拍.*照|发.*图|全景|看看|找.*发|找出来|找到|找一下|找找|在哪|发给我/;
-            // 创作意图排除：用户要 LLM 画/写/创作内容，不是要检索节点图
-            const creativePattern = /画一|画幅|画张|画个|画.*画|写一|写首|写篇|生成.*图|创作|设计一|编一/;
-            const hasUserImage = savedImages.length > 0;
-            const isCreative = creativePattern.test(text);
-            const wantAnnotate = !isCreative && annotatePattern.test(text);
-            const wantRetrieve = !isCreative && imageReqPattern.test(text) && !hasUserImage;
-            const targetObj = wantAnnotate ? extractAnnotationTarget(text) : '';
-            // 当前消息无物体名 → 从会话上下文回溯
-            const finalTarget = targetObj || (wantAnnotate ? extractTargetFromContext(sessionId) : '');
-
-            if (wantRetrieve || wantAnnotate) {
+            // ── 图片操作分发（检索意图仅非 ROS 流程触发；标注意图在 ROS 流程中也放行）──
+            if (wantAnnotate || (wantRetrieve && !rosHandling)) {
               // 创建第二条消息专门承载图片
               const imgMsg: ChatMessage = {
                 id: genId('msg'),
@@ -1407,6 +1813,235 @@ export default function chatSyncPlugin(): Plugin {
 
         apiReq.write(payload);
         apiReq.end();
+      });
+
+      // ── ROS ChatEvent Endpoint (must be before /api/chat catch-all) ──
+      server.middlewares.use('/api/chat/ros-event', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405);
+          res.end();
+          return;
+        }
+
+        try {
+          const body = JSON.parse(await readBody(req) || '{}');
+
+          if (!body.session_id) {
+            return jsonResponse(res, 400, { error: 'missing session_id' });
+          }
+
+          traceSearch(
+            `[SEARCH-TRACE] ros-event.in type=${body.event_type} task=${body.task_id || ''} ` +
+            `session=${body.session_id} node=${body.node_id} ` +
+            `imgs=${(body.image_paths || []).length} ` +
+            `active=${activeTaskBySession.get(body.session_id) || ''} ` +
+            `target=${body.target_object || ''} skip_reason=${body.skip_reason || ''}`
+          );
+
+          // Task isolation: confirmation event registers the authoritative
+          // active task; subsequent search_* events must match or be dropped.
+          const STALE_GATED_TYPES = new Set([
+            'search_node_observation',
+            'search_target_found',
+            'search_task_summary',
+          ]);
+          if (STALE_GATED_TYPES.has(body.event_type)) {
+            const active = activeTaskBySession.get(body.session_id);
+            const incoming = body.task_id ? String(body.task_id) : '';
+            if (active && incoming && active !== incoming) {
+              traceSearch(
+                `[SEARCH-TRACE] ros-event.drop reason=stale type=${body.event_type} task=${incoming} active=${active} session=${body.session_id} node=${body.node_id} imgs=${(body.image_paths || []).length}`,
+                'warn'
+              );
+              return jsonResponse(res, 200, { dropped: 'stale_task', active, incoming });
+            }
+            // Trace accepted events too — invaluable when debugging "silent"
+            // skips vs genuine drops.
+            traceSearch(
+              `[SEARCH-TRACE] ros-event.accept type=${body.event_type} task=${incoming} session=${body.session_id} node=${body.node_id} imgs=${(body.image_paths || []).length}`
+            );
+          }
+
+          let message: ChatMessage;
+
+          if (body.event_type === 'search_confirmation_request') {
+            // Register active task for this session (overwrites any prior).
+            if (body.task_id) {
+              activeTaskBySession.set(body.session_id, String(body.task_id));
+            }
+            // Round 7: 若 session 已被 memory-recall 的"去看看"/"帮我找一找"预授权 →
+            // 跳过确认气泡，直接广播 auto_confirm_request 让前端自动 confirmTask
+            if (consumeAutoConfirm(body.session_id)) {
+              traceSearch(
+                `[SEARCH-TRACE] auto-confirm session=${body.session_id} task=${body.task_id || ''} target=${body.target_object || ''}`
+              );
+              broadcast({
+                type: 'auto_confirm_request',
+                sessionId: body.session_id,
+                taskId: String(body.task_id || ''),
+              });
+              return jsonResponse(res, 200, { ok: true, auto_confirmed: true });
+            }
+            // 确认请求：从拓扑地图搜索历史图片
+            const canonicalTarget = normalizeSearchTarget(body.target_object || '') || (body.target_object || '');
+            const topoResults = searchTopoForObject(canonicalTarget);
+            const historyImages: ImageAttachment[] = [];
+            for (const r of topoResults.slice(0, 3)) {
+              for (const img of r.images.slice(0, 2)) {
+                historyImages.push({
+                  id: genId('img'),
+                  url: img.url,
+                  alt: img.alt,
+                });
+              }
+            }
+
+            const nodeNames = topoResults.slice(0, 3)
+              .map(r => `${r.nodeName}(节点${r.nodeId})`)
+              .join('、');
+            const text = nodeNames
+              ? `我记得在${nodeNames}见过${canonicalTarget}，这是当时拍到的图片。需要我去现场再确认一下吗？`
+              : (body.text || `当前记忆中没有找到${canonicalTarget}的位置，需要我去各个地方找找看吗？`);
+
+            message = {
+              id: genId('msg'),
+              role: 'robot',
+              content: text,
+              timestamp: Date.now(),
+              images: historyImages.length > 0 ? historyImages : undefined,
+              meta: {
+                status: 'awaiting_confirmation',
+                statusText: 'search_confirmation_request',
+                actions: [
+                  { id: 'confirm_search', label: '去看看', style: 'primary' },
+                  { id: 'cancel_search', label: '不用了', style: 'secondary' },
+                ],
+                taskId: body.task_id,
+              },
+            };
+          } else {
+            // 正常搜索事件：复制图片到聊天副本目录
+            const chatImages: ImageAttachment[] = [];
+            const destDir = path.join(
+              DATA_DIR, 'images', 'ros-events',
+              body.session_id, body.task_id || 'unknown'
+            );
+            fs.mkdirSync(destDir, { recursive: true });
+
+            for (const entry of (body.image_paths || [])) {
+              let angleStr = 'unknown';
+              let srcPath = entry;
+              if (entry.includes(':')) {
+                const colonIdx = entry.indexOf(':');
+                angleStr = entry.slice(0, colonIdx);
+                srcPath = entry.slice(colonIdx + 1);
+              }
+
+              const filename = `node${body.node_id}_${angleStr}_${genId('img')}.png`;
+              const destPath = path.join(destDir, filename);
+
+              try {
+                fs.copyFileSync(srcPath, destPath);
+                chatImages.push({
+                  id: genId('img'),
+                  url: `/api/images/ros-events/${body.session_id}/${body.task_id || 'unknown'}/${filename}`,
+                  alt: `节点${body.node_id} ${angleStr}°`,
+                });
+              } catch (e: any) {
+                console.warn(`[ros-event] Failed to copy image: ${srcPath}`, e.message);
+              }
+            }
+
+            message = {
+              id: genId('msg'),
+              role: (body.role || 'robot') as any,
+              content: body.text || '',
+              timestamp: Date.now(),
+              images: chatImages.length > 0 ? chatImages : undefined,
+              meta: {
+                status: body.found ? 'completed' : 'searching',
+                statusText: body.event_type,
+              },
+            };
+          }
+
+          // Append to session
+          const msgs = sessionMessages.get(body.session_id);
+          if (msgs) {
+            msgs.push(message);
+            scheduleSave();
+            broadcast({ type: 'message_added', sessionId: body.session_id, message });
+            traceSearch(
+              `[SEARCH-TRACE] ros-event.persist session=${body.session_id} ` +
+              `msg_id=${message.id} type=${body.event_type} ` +
+              `imgs=${(message.images || []).length} ` +
+              `content="${(message.content || '').slice(0, 80)}"`
+            );
+
+            // Round 6: 若是搜索类事件 → 紧跟一条 LLM 润色版消息（异步填充，不覆盖上面硬数据）
+            if (POLISH_EVENT_TYPES.has(body.event_type)) {
+              const polishMsg: ChatMessage = {
+                id: genId('msg'),
+                role: 'robot',
+                content: '',
+                timestamp: Date.now() + 1, // 确保时间戳严格递增，保证排序稳定
+                meta: {
+                  status: 'polishing',
+                  statusText: `polish:${body.event_type}`,
+                  polishFor: message.id,
+                },
+              };
+              msgs.push(polishMsg);
+              scheduleSave();
+              broadcast({ type: 'message_added', sessionId: body.session_id, message: polishMsg });
+              try {
+                polishWithLLM(body.session_id, polishMsg, body);
+              } catch (exc: any) {
+                traceSearch(`[SEARCH-TRACE] polish.spawn_error type=${body.event_type} err=${exc && exc.message}`, 'warn');
+                _removePolishPlaceholder(body.session_id, polishMsg.id);
+              }
+            }
+          } else {
+            traceSearch(
+              `[SEARCH-TRACE] ros-event.no_session session=${body.session_id} ` +
+              `type=${body.event_type}`,
+              'warn'
+            );
+            console.warn(`[ros-event] Session not found: ${body.session_id}`);
+          }
+
+          return jsonResponse(res, 200, { success: true, messageId: message.id });
+        } catch (e: any) {
+          traceSearch(
+            `[SEARCH-TRACE] ros-event.persist_error exc="${e && e.message ? e.message : e}"`,
+            'warn'
+          );
+          return jsonResponse(res, 500, { error: e.message });
+        }
+      });
+
+      // ── Abandon active search task (user clicked cancel) ──
+      server.middlewares.use('/api/chat/ros-task/abandon', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405);
+          res.end();
+          return;
+        }
+        try {
+          const body = JSON.parse(await readBody(req) || '{}');
+          const sid = String(body.session_id || '');
+          const tid = body.task_id ? String(body.task_id) : '';
+          if (!sid) return jsonResponse(res, 400, { error: 'missing session_id' });
+          const active = activeTaskBySession.get(sid);
+          // Only clear if matching (or no task_id provided — explicit wipe).
+          if (!tid || !active || active === tid) {
+            activeTaskBySession.delete(sid);
+            return jsonResponse(res, 200, { cleared: active || null });
+          }
+          return jsonResponse(res, 200, { cleared: null, active });
+        } catch (e: any) {
+          return jsonResponse(res, 500, { error: e.message });
+        }
       });
 
       server.middlewares.use('/api/chat', async (req, res) => {

@@ -8,6 +8,7 @@ SSTG System Manager Node - 硬件启停和系统状态监控
 - /system/log (topic): 推送 launch subprocess 的日志
 """
 
+import json
 import os
 import signal
 import subprocess
@@ -47,6 +48,59 @@ LAUNCH_MODES = {
         'description': 'AMCL 导航 (定位 + Nav2 + 相机)',
     },
 }
+
+# UI AI 引擎配置 single-source-of-truth（与 vite-plugins/chatSyncPlugin.ts、perception_node.py 对齐）
+LLM_CONFIG_PATH = os.path.expanduser('~/sstg-data/chat/llm-config.json')
+
+# provider → 该 provider 对应的 SDK 惯例环境变量名
+# 统一再额外注入 SSTG_LLM_API_KEY / SSTG_LLM_BASE_URL / SSTG_LLM_MODEL，方便下游通用读取
+_PROVIDER_ENV_KEYS = {
+    'DashScope (阿里云)': 'DASHSCOPE_API_KEY',
+    'DeepSeek (深度求索)': 'DEEPSEEK_API_KEY',
+    'ZhipuAI (智谱清言)': 'ZHIPUAI_API_KEY',
+    'Ollama (本地私有化)': 'OLLAMA_API_KEY',
+    'OpenAI': 'OPENAI_API_KEY',
+}
+
+
+def _build_llm_env(base_env: dict) -> dict:
+    """
+    从 UI 的 llm-config.json 读取 activeProvider，注入所有相关环境变量。
+    这样 ros2 launch 起来的所有子进程（perception/nlp/planning/...）都能自动拿到 key。
+    找不到配置时返回 base_env 的浅拷贝，不破坏原环境。
+    """
+    env = dict(base_env)
+    try:
+        with open(LLM_CONFIG_PATH, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return env
+
+    active = cfg.get('activeProvider', '')
+    providers = cfg.get('providers', {}) or {}
+    if not active or active not in providers:
+        return env
+
+    p = providers[active] or {}
+    api_key = (p.get('apiKey') or '').strip()
+    base_url = (p.get('baseUrl') or '').strip()
+    model = (p.get('model') or '').strip()
+
+    if not api_key:
+        return env
+
+    # 1. 通用变量（下游自写节点推荐读这几个）
+    env['SSTG_LLM_PROVIDER'] = active
+    env['SSTG_LLM_API_KEY'] = api_key
+    env['SSTG_LLM_BASE_URL'] = base_url
+    env['SSTG_LLM_MODEL'] = model
+
+    # 2. provider 专用变量（兼容第三方 SDK 的默认查找路径，例如 DASHSCOPE_API_KEY）
+    provider_env_name = _PROVIDER_ENV_KEYS.get(active)
+    if provider_env_name:
+        env[provider_env_name] = api_key
+
+    return env
 
 
 class SystemManagerNode(Node):
@@ -272,6 +326,7 @@ class SystemManagerNode(Node):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 preexec_fn=os.setsid,
+                env=_build_llm_env(os.environ),
             )
             self._publish_log(f'✔ 已重启 {node_name}')
             response.success = True
@@ -326,6 +381,12 @@ class SystemManagerNode(Node):
 
         try:
             with self._process_lock:
+                launch_env = _build_llm_env(os.environ)
+                llm_key_ok = bool(launch_env.get('SSTG_LLM_API_KEY'))
+                self._publish_log(
+                    f'LLM env injected: provider={launch_env.get("SSTG_LLM_PROVIDER", "<none>")} '
+                    f'key_loaded={llm_key_ok} model={launch_env.get("SSTG_LLM_MODEL", "")}'
+                )
                 self._process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -333,6 +394,7 @@ class SystemManagerNode(Node):
                     preexec_fn=os.setsid,
                     text=True,
                     bufsize=1,
+                    env=launch_env,
                 )
                 self._current_mode = mode
 

@@ -27,9 +27,14 @@ function TargetBeacon({ position }: { position: [number, number, number] }) {
 }
 
 /** Get node color based on search trace state */
-function getNodeColor(nodeId: number, isSelected: boolean, trace: ObjectSearchTrace | null): { color: string; emissive: string; emissiveIntensity: number } {
-  if (!trace || trace.phase === '' || trace.phase === 'completed' && !trace.candidateNodeIds.includes(nodeId)) {
-    return { color: isSelected ? "#60a5fa" : "#3b82f6", emissive: isSelected ? "#60a5fa" : "#1e40af", emissiveIntensity: isSelected ? 2 : 1 };
+function getNodeColor(nodeId: number, isSelected: boolean, trace: ObjectSearchTrace | null, navState: NavigationState | null): { color: string; emissive: string; emissiveIntensity: number } {
+  const defaultColor = { color: isSelected ? "#60a5fa" : "#3b82f6", emissive: isSelected ? "#60a5fa" : "#1e40af", emissiveIntensity: isSelected ? 2 : 1 };
+  // 导航中: 目标节点显示琥珀色
+  if (navState?.isNavigating && navState.targetNodeId === nodeId) {
+    return { color: "#fbbf24", emissive: "#f59e0b", emissiveIntensity: 2 };
+  }
+  if (!trace || trace.phase === '' || trace.phase === 'completed') {
+    return defaultColor;
   }
   if (trace.found && trace.currentNodeId === nodeId) {
     return { color: "#10b981", emissive: "#10b981", emissiveIntensity: 2.5 };
@@ -43,7 +48,7 @@ function getNodeColor(nodeId: number, isSelected: boolean, trace: ObjectSearchTr
   if (trace.candidateNodeIds.includes(nodeId)) {
     return { color: "#fbbf24", emissive: "#f59e0b", emissiveIntensity: 1.2 };
   }
-  return { color: isSelected ? "#60a5fa" : "#3b82f6", emissive: isSelected ? "#60a5fa" : "#1e40af", emissiveIntensity: isSelected ? 2 : 1 };
+  return defaultColor;
 }
 
 /** Laser scan point cloud rendered on the map */
@@ -376,7 +381,7 @@ function MapScene({ mapData, topoNodes, selectedNode, onSelectNode, calibration,
           {topoNodes.map((n: TopoNode) => {
             const pos = toLocal(n.pose.x, n.pose.y);
             const isSelected = selectedNode?.id === n.id;
-            const nodeColors = getNodeColor(n.id, isSelected, objectSearchTrace);
+            const nodeColors = getNodeColor(n.id, isSelected, objectSearchTrace, navigationState);
             const isTarget = (navigationState?.isNavigating && navigationState.targetNodeId === n.id)
               || (objectSearchTrace?.currentNodeId === n.id && objectSearchTrace?.phase !== 'completed');
             return (
@@ -508,27 +513,43 @@ function confidenceColor(conf: number) {
 
 const PANORAMA_ANGLES = [0, 90, 180, 270];
 
-/** 获取节点方向图片 URL。session 地图用 viewpoints 里的相对路径，legacy 用旧路径 */
-function getNodeImageUrl(node: TopoNode, angle: number, activeMap: any): string {
-  // 优先从 viewpoints 取相对路径
+/** 获取节点方向图片 URL。session 地图用 viewpoints 里的相对路径，legacy 用旧路径
+ * R8++: URL 带两段 buster：
+ *   - v={capture_time}  —— 后端 update_semantic 成功会 bump，保证"真有新数据"时 URL 变化
+ *   - t={topoLoadNonce} —— 每次 topology re-fetch 时 bump，用来绕过浏览器"负缓存"
+ *       （早期 middleware 不剥 query 时 ?v= URL 全部返 404，浏览器把这些精确 URL 记死了，
+ *         即使现在服务端 200，浏览器也不会再发请求。加 t 改变 URL 形状即可绕开）。
+ */
+function getNodeImageUrl(node: TopoNode, angle: number, activeMap: any, topoNonce: number): string {
   const vp = node.viewpoints?.[String(angle)];
+  const ct = vp && (vp as any).capture_time ? Math.floor(Number((vp as any).capture_time)) : 0;
+  const q = `?v=${ct}&t=${topoNonce}`;
   if (vp?.image_path && activeMap?.source === 'session') {
     const sessionId = activeMap.id.replace('session:', '');
-    return `/map-sessions/${sessionId}/${vp.image_path}`;
+    return `/map-sessions/${sessionId}/${vp.image_path}${q}`;
   }
   // legacy fallback
-  return `/maps/captured_nodes/node_${node.id}/${angle.toString().padStart(3, '0')}deg_rgb.png`;
+  return `/maps/captured_nodes/node_${node.id}/${angle.toString().padStart(3, '0')}deg_rgb.png${q}`;
 }
 
 export default function MapView() {
   const [mapData, setMapData] = useState<any>(null);
   const [topoNodes, setTopoNodes] = useState<TopoNode[]>([]);
-  const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null);
+  // R8++: 每次 setTopoNodes 时 bump 这个值 → 作为 img URL 的 ?t= 绕过浏览器负缓存
+  const [topoNonce, setTopoNonce] = useState<number>(() => Date.now());
+  // R8++: 用 id 而非对象引用做 selectedNode 指针；panel 渲染时从最新 topoNodes 派生，
+  //       保证 setTopoNodes 后 selectedNode 自动拿到新 viewpoints（含新 capture_time）
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const selectedNode = useMemo<TopoNode | null>(
+    () => (selectedNodeId == null ? null : topoNodes.find(n => n.id === selectedNodeId) ?? null),
+    [topoNodes, selectedNodeId]
+  );
+  const setSelectedNode = (n: TopoNode | null) => setSelectedNodeId(n?.id ?? null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showInspector, setShowInspector] = useState(false);
 
-  const { maps, activeMapId, calibrations, savedCameraState, addMap, deleteMap, renameMap, updateMap, setActiveMapId, updateCalibration, saveCalibration, saveCameraState, discoverSessions } = useMapStore();
+  const { maps, activeMapId, calibrations, savedCameraState, showScanOverlay, addMap, deleteMap, renameMap, updateMap, setActiveMapId, updateCalibration, saveCalibration, saveCameraState, setShowScanOverlay, discoverSessions } = useMapStore();
 
   // Auto-discover map sessions on mount
   useEffect(() => { discoverSessions(); }, []);
@@ -555,6 +576,7 @@ export default function MapView() {
   const cancelTask = useRosStore(state => state.cancelTask);
   const executeNavigation = useRosStore(state => state.executeNavigation);
   const clearPoseTrail = useRosStore(state => state.clearPoseTrail);
+  const clearSearchTrace = useRosStore(state => state.clearSearchTrace);
   const occupancyGrid = useRosStore(state => state.occupancyGrid);
   const navigationState = useRosStore(state => state.navigationState);
   const objectSearchTrace = useRosStore(state => state.objectSearchTrace);
@@ -566,7 +588,6 @@ export default function MapView() {
   const [setPoseMode, setSetPoseMode] = useState(false);
   const [pendingPose, setPendingPose] = useState<{ x: number; y: number } | null>(null);
   const [pendingYaw, setPendingYaw] = useState<number>(0);
-  const [showScanOverlay, setShowScanOverlay] = useState(false); // independent scan toggle
 
   // Navigation failure toast
   const [navError, setNavError] = useState<string | null>(null);
@@ -631,10 +652,11 @@ export default function MapView() {
         // Load topo nodes
         if (activeMap.topoJson) {
           try {
-            const topoRes = await fetch(activeMap.topoJson);
+            const topoRes = await fetch(activeMap.topoJson + `?t=${Date.now()}`);
             if (topoRes.ok) {
               const topoData = await topoRes.json();
               setTopoNodes(topoData.nodes || []);
+              setTopoNonce(Date.now());  // R8++: bump 图片 URL ?t= buster
             } else {
               console.warn('Topo JSON not found:', activeMap.topoJson);
               setTopoNodes([]);
@@ -663,6 +685,43 @@ export default function MapView() {
     }
     initMap();
   }, [activeMapId, maps]);
+
+  // R8++: ROS 端每个 viewpoint 的 update_semantic 落盘后，会 publish event_type='semantic_update_done'。
+  // 同一次搜索会连发 4 条（四个角度），dep 用 currentNodeId + visitedNodeIds.length + eventType 确保能重复触发。
+  // 兜底：也监听 taskStatus 变化（任务结束时再拉一次全量）。
+  const refetchTopoTimer = useRef<number | null>(null);
+  const refetchTopology = useCallback(async () => {
+    const am = maps.find(m => m.id === activeMapId) || maps[0];
+    if (!am?.topoJson) return;
+    try {
+      const res = await fetch(am.topoJson + `?t=${Date.now()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setTopoNodes(data.nodes || []);
+      setTopoNonce(Date.now());  // 关键：bump nonce 让所有 <img> URL 形状变化，绕负缓存
+    } catch {}
+  }, [activeMapId, maps]);
+
+  useEffect(() => {
+    const ev = objectSearchTrace?.eventType;
+    if (ev !== 'semantic_update_done') return;
+    if (refetchTopoTimer.current !== null) window.clearTimeout(refetchTopoTimer.current);
+    refetchTopoTimer.current = window.setTimeout(() => { refetchTopology(); }, 350) as unknown as number;
+    return () => {
+      if (refetchTopoTimer.current !== null) window.clearTimeout(refetchTopoTimer.current);
+    };
+  }, [objectSearchTrace?.eventType, objectSearchTrace?.currentNodeId,
+      objectSearchTrace?.currentAngleDeg, objectSearchTrace?.visitedNodeIds?.length,
+      refetchTopology]);
+
+  // 任务结束时再保险拉一次（有些角度 update_done 可能在任务结束后才落盘）
+  useEffect(() => {
+    const s = taskStatus?.state;
+    if (s === 'completed' || s === 'success' || s === 'failed' || s === 'cancelled') {
+      const t = window.setTimeout(() => { refetchTopology(); }, 800);
+      return () => window.clearTimeout(t);
+    }
+  }, [taskStatus?.state, taskStatus?.taskId, refetchTopology]);
 
 
   useEffect(() => {
@@ -757,11 +816,11 @@ export default function MapView() {
           </div>
           <button onClick={handlePrevImage} className="absolute left-8 top-1/2 -translate-y-1/2 p-4 bg-white/5 hover:bg-white/20 text-white rounded-full transition-all hover:scale-110 backdrop-blur-md border border-white/10 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)]"><ChevronLeft size={32} /></button>
           <button onClick={handleNextImage} className="absolute right-8 top-1/2 -translate-y-1/2 p-4 bg-white/5 hover:bg-white/20 text-white rounded-full transition-all hover:scale-110 backdrop-blur-md border border-white/10 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)]"><ChevronRight size={32} /></button>
-          <img key={enlargedAngle} src={getNodeImageUrl(selectedNode, enlargedAngle, activeMap)} className="max-w-[85vw] max-h-[85vh] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-slate-800 object-contain animate-in slide-in-from-bottom-4 zoom-in-95 duration-300" />
+          <img key={`${enlargedAngle}-${topoNonce}`} src={getNodeImageUrl(selectedNode, enlargedAngle, activeMap, topoNonce)} className="max-w-[85vw] max-h-[85vh] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-slate-800 object-contain animate-in slide-in-from-bottom-4 zoom-in-95 duration-300" />
           <div className="absolute bottom-8 flex gap-3 z-50 bg-black/40 p-3 rounded-2xl backdrop-blur-md border border-white/5">
             {PANORAMA_ANGLES.map((angle) => (
               <div key={angle} onClick={() => setEnlargedAngle(angle)} className={cn("relative h-16 aspect-video rounded-md overflow-hidden cursor-pointer transition-all border-2", enlargedAngle === angle ? "border-blue-500 scale-110 shadow-[0_0_15px_rgba(59,130,246,0.5)]" : "border-transparent opacity-40 hover:opacity-80")}>
-                <img src={getNodeImageUrl(selectedNode, angle, activeMap)} className="w-full h-full object-cover" />
+                <img key={`thumb-${angle}-${topoNonce}`} src={getNodeImageUrl(selectedNode, angle, activeMap, topoNonce)} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="text-[11px] font-mono font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,1)] bg-black/40 px-1.5 rounded">{angle}°</span></div>
               </div>
             ))}
@@ -902,6 +961,14 @@ export default function MapView() {
         {/* Robot Pose Display — always visible */}
         {robotPose && !navigationState?.isNavigating && !(setPoseMode && pendingPose) && (
           <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+            {objectSearchTrace && (
+              <button
+                onClick={clearSearchTrace}
+                className="bg-blue-500/15 backdrop-blur-md border border-blue-500/40 text-blue-400 hover:bg-blue-500/25 transition-colors rounded-xl px-4 py-2 text-xs font-medium shadow-lg"
+              >
+                重置节点状态
+              </button>
+            )}
             {navigationState?.poseTrail && navigationState.poseTrail.length > 0 && (
               <button
                 onClick={clearPoseTrail}
@@ -1191,11 +1258,13 @@ export default function MapView() {
                       onClick={() => setEnlargedAngle(angle)}
                     >
                       <img
-                        src={getNodeImageUrl(selectedNode, angle, activeMap)}
+                        key={`${selectedNode.id}-${angle}-${topoNonce}`}
+                        src={getNodeImageUrl(selectedNode, angle, activeMap, topoNonce)}
                         alt={`Node ${selectedNode.id} at ${angle}°`}
                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-500"
                         onError={(e) => {
-                          e.currentTarget.parentElement!.style.display = none;
+                          // R8+: 记录失败 URL 便于排查；不再把父元素隐藏（之前 `none` 是未声明标识符，运行时抛 ReferenceError）
+                          console.warn('[MapView] node image load failed:', (e.currentTarget as HTMLImageElement).src);
                         }}
                       />
                       <div className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] text-white font-mono border border-white/10 backdrop-blur-sm">

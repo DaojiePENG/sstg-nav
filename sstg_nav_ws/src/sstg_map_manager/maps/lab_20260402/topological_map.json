@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": 0,
-      "name": "走廊",
+      "name": "办公室/办公室/后勤区域-办公椅旁",
       "pose": {
         "x": 0.762,
         "y": -1.458,
@@ -14,44 +14,86 @@
           "image_path": "captured_nodes/node_0/000deg_rgb.png",
           "depth_path": "captured_nodes/node_0/000deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.95,
+            "room_type": "office",
+            "room_type_cn": "办公室",
+            "aliases": [
+              "办公室",
+              "办公椅",
+              "圆桌",
+              "红色雨伞",
+              "储物柜",
+              "置物架"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "chair",
-                "name_cn": "椅子",
-                "position": "右侧，靠近前景",
+                "name": "办公椅",
+                "name_cn": "办公椅",
+                "position": "中心",
+                "quantity": 2,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "圆桌",
+                "name_cn": "圆桌",
+                "position": "中心",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "trophy",
-                "name_cn": "奖杯",
-                "position": "左侧墙上的架子上",
-                "quantity": 4,
-                "confidence": 0.95
-              },
-              {
-                "name": "book",
-                "name_cn": "书",
-                "position": "左侧墙上的架子上",
-                "quantity": 6,
-                "confidence": 0.92
-              },
-              {
-                "name": "fire_extinguisher",
-                "name_cn": "灭火器",
-                "position": "远处的墙边",
+                "name": "红色雨伞",
+                "name_cn": "红色雨伞",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.8500000238418579,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "储物柜",
+                "name_cn": "储物柜",
+                "position": "右",
+                "quantity": 1,
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "置物架",
+                "name_cn": "置物架",
+                "position": "左",
+                "quantity": 1,
+                "confidence": 0.8500000238418579,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一条现代化的办公室走廊，左侧墙上有一个展示奖杯和书籍的架子，右侧有一把办公椅。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "办公椅",
+              "圆桌",
+              "红色雨伞",
+              "储物柜",
+              "置物架"
+            ],
+            "description": "这是一个现代化的办公室环境，地面为浅色木质地板，房间内摆放着两把黑色办公椅和一张圆桌。背景中可以看到一个红色雨伞，右侧有黄色储物柜，左侧有置物架，整体空间整洁明亮。"
           },
-          "capture_time": 1776194851.462686
+          "capture_time": 1776603212.767558
         },
         "90": {
           "angle": 90,
@@ -60,114 +102,157 @@
           "semantic_info": {
             "room_type": "office",
             "room_type_cn": "办公室",
-            "confidence": 0.95,
+            "aliases": [
+              "办公室",
+              "公告栏",
+              "文件"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "person",
-                "name_cn": "人",
-                "position": "在办公隔间内，坐在电脑前",
+                "name": "公告栏",
+                "name_cn": "公告栏",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "computer",
-                "name_cn": "电脑",
-                "position": "在办公隔间内，位于人的前方",
-                "quantity": 2,
-                "confidence": 0.95
-              },
-              {
-                "name": "desk",
-                "name_cn": "桌子",
-                "position": "在办公隔间内，位于人的前方",
-                "quantity": 1,
-                "confidence": 0.9
-              },
-              {
-                "name": "chair",
-                "name_cn": "椅子",
-                "position": "在办公隔间内，位于电脑前",
-                "quantity": 1,
-                "confidence": 0.9
-              },
-              {
-                "name": "partition_wall",
-                "name_cn": "隔断墙",
-                "position": "分隔办公区域",
-                "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "floor",
-                "name_cn": "地板",
-                "position": "整个房间地面",
-                "quantity": 1,
-                "confidence": 0.98
-              },
-              {
-                "name": "ceiling_light",
-                "name_cn": "天花板灯",
-                "position": "在房间顶部，提供照明",
-                "quantity": 6,
-                "confidence": 0.9
+                "name": "文件",
+                "name_cn": "文件",
+                "position": "背景",
+                "quantity": 4,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张办公室的照片，显示了一个办公隔间，里面有一个人坐在电脑前工作，前景有蓝色和红色的装饰物。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "公告栏",
+              "文件"
+            ],
+            "description": "这是一间办公室的局部图像，显示了墙壁底部的踢脚线和地面。背景墙上有一个公告栏，上面贴有几张文件。左侧可以看到部分办公设备和灯光。"
           },
-          "capture_time": 1776194855.5135622
+          "capture_time": 1776603211.1052914
         },
         "180": {
           "angle": 180,
           "image_path": "captured_nodes/node_0/180deg_rgb.png",
           "depth_path": "captured_nodes/node_0/180deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "room_type": "office",
+            "room_type_cn": "办公室",
+            "aliases": [
+              "办公室",
+              "办公桌",
+              "电脑",
+              "隔断墙",
+              "门",
+              "行李箱",
+              "背包",
+              "海报/公告栏"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "fire_extinguisher",
-                "name_cn": "灭火器",
-                "position": "左侧红色柜子上",
+                "name": "办公桌",
+                "name_cn": "办公桌",
+                "position": "右侧",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "water_bottles",
-                "name_cn": "桶装水",
-                "position": "中间靠墙处",
-                "quantity": 6,
-                "confidence": 0.8
+                "name": "电脑",
+                "name_cn": "电脑",
+                "position": "右侧",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "door",
+                "name": "隔断墙",
+                "name_cn": "隔断墙",
+                "position": "右侧",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "门",
                 "name_cn": "门",
-                "position": "右侧墙壁",
+                "position": "左侧",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "bench",
-                "name_cn": "长凳",
-                "position": "前景中央",
+                "name": "行李箱",
+                "name_cn": "行李箱",
+                "position": "左侧背景",
                 "quantity": 1,
-                "confidence": 0.95
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "trash_can",
-                "name_cn": "垃圾桶",
-                "position": "左侧红色柜子旁",
+                "name": "背包",
+                "name_cn": "背包",
+                "position": "左侧背景",
                 "quantity": 1,
-                "confidence": 0.8
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "海报/公告栏",
+                "name_cn": "海报/公告栏",
+                "position": "右侧背景",
+                "quantity": 5,
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "这是一张室内走廊的图片，地面为浅色木地板，左侧有一个红色消防柜和垃圾桶，中间堆放着桶装水，右侧有一扇门和一个长凳。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "办公桌",
+              "电脑",
+              "隔断墙",
+              "门",
+              "行李箱",
+              "背包",
+              "海报/公告栏"
+            ],
+            "description": "这是一间现代化的办公室，左侧有一扇玻璃门，背景处有行李箱和背包。右侧是办公区域，一名员工正在工位上工作，墙上挂有多个海报或公告栏。房间整体光线明亮，地面为灰色地毯和浅色木地板。"
           },
-          "capture_time": 1776194858.6874008
+          "capture_time": 1776603213.4955432
         },
         "270": {
           "angle": 270,
@@ -175,188 +260,584 @@
           "depth_path": "captured_nodes/node_0/270deg_depth.png",
           "semantic_info": {
             "room_type": "office",
-            "room_type_cn": "办公室",
-            "confidence": 0.95,
+            "room_type_cn": "办公室/后勤区域",
+            "aliases": [
+              "办公室/后勤区域",
+              "包裹",
+              "垃圾桶",
+              "消防箱",
+              "储物箱"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "cabinet",
-                "name_cn": "橱柜",
-                "position": "背景墙",
+                "name": "包裹",
+                "name_cn": "包裹",
+                "position": "前景",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "trash_can",
+                "name": "垃圾桶",
                 "name_cn": "垃圾桶",
+                "position": "背景左侧",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "消防箱",
+                "name_cn": "消防箱",
                 "position": "右侧",
                 "quantity": 1,
-                "confidence": 0.97
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "refrigerator",
-                "name_cn": "冰箱",
-                "position": "左侧",
-                "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "chair",
-                "name_cn": "椅子",
-                "position": "左侧",
-                "quantity": 1,
-                "confidence": 0.93
-              },
-              {
-                "name": "water_bottle",
-                "name_cn": "水瓶",
-                "position": "地面，靠近橱柜",
-                "quantity": 1,
-                "confidence": 0.92
+                "name": "储物箱",
+                "name_cn": "储物箱",
+                "position": "背景右侧",
+                "quantity": 2,
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张办公室的照片，显示了带有浅色橱柜的背景墙、一个黑色垃圾桶、一个冰箱和一把椅子。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室/后勤区域",
+              "包裹",
+              "垃圾桶",
+              "消防箱",
+              "储物箱"
+            ],
+            "description": "这是一个办公室或后勤区域的场景，地面为浅色地板。前景有一个用塑料膜包裹的大型包裹，背景左侧有一个黑色垃圾桶和办公桌，右侧有一个红色的消防箱和两个储物箱。整体环境整洁，物品摆放有序。"
           },
-          "capture_time": 1776194861.7917132
+          "capture_time": 1776603212.4269798
         }
       },
       "panorama_paths": {},
       "semantic_info": {
         "room_type": "office",
-        "room_type_cn": "走廊",
-        "confidence": 0.9375,
+        "room_type_cn": "办公室",
+        "aliases": [
+          "办公室",
+          "办公椅",
+          "圆桌",
+          "红色雨伞",
+          "储物柜",
+          "置物架",
+          "公告栏",
+          "文件",
+          "办公桌",
+          "电脑",
+          "隔断墙",
+          "门",
+          "行李箱",
+          "背包",
+          "海报/公告栏",
+          "包裹",
+          "垃圾桶",
+          "消防箱",
+          "储物箱"
+        ],
+        "confidence": 0.949999988079071,
         "objects": [
           {
-            "name": "chair",
-            "name_cn": "椅子",
-            "position": "右侧，靠近前景",
-            "quantity": 1,
-            "confidence": 0.98
-          },
-          {
-            "name": "trophy",
-            "name_cn": "奖杯",
-            "position": "左侧墙上的架子上",
-            "quantity": 4,
-            "confidence": 0.95
-          },
-          {
-            "name": "book",
-            "name_cn": "书",
-            "position": "左侧墙上的架子上",
-            "quantity": 6,
-            "confidence": 0.92
-          },
-          {
-            "name": "fire_extinguisher",
-            "name_cn": "灭火器",
-            "position": "远处的墙边",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "person",
-            "name_cn": "人",
-            "position": "在办公隔间内，坐在电脑前",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "computer",
-            "name_cn": "电脑",
-            "position": "在办公隔间内，位于人的前方",
+            "name": "办公椅",
+            "name_cn": "办公椅",
+            "position": "中心",
             "quantity": 2,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "desk",
-            "name_cn": "桌子",
-            "position": "在办公隔间内，位于人的前方",
+            "name": "圆桌",
+            "name_cn": "圆桌",
+            "position": "中心",
             "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "partition_wall",
-            "name_cn": "隔断墙",
-            "position": "分隔办公区域",
+            "name": "红色雨伞",
+            "name_cn": "红色雨伞",
+            "position": "背景",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.8500000238418579,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "floor",
-            "name_cn": "地板",
-            "position": "整个房间地面",
+            "name": "储物柜",
+            "name_cn": "储物柜",
+            "position": "右",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "ceiling_light",
-            "name_cn": "天花板灯",
-            "position": "在房间顶部，提供照明",
-            "quantity": 6,
-            "confidence": 0.9
-          },
-          {
-            "name": "water_bottles",
-            "name_cn": "桶装水",
-            "position": "中间靠墙处",
-            "quantity": 6,
-            "confidence": 0.8
-          },
-          {
-            "name": "door",
-            "name_cn": "门",
-            "position": "右侧墙壁",
+            "name": "置物架",
+            "name_cn": "置物架",
+            "position": "左",
             "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.8500000238418579,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "bench",
-            "name_cn": "长凳",
-            "position": "前景中央",
+            "name": "公告栏",
+            "name_cn": "公告栏",
+            "position": "背景",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "trash_can",
-            "name_cn": "垃圾桶",
+            "name": "文件",
+            "name_cn": "文件",
+            "position": "背景",
+            "quantity": 4,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "办公桌",
+            "name_cn": "办公桌",
             "position": "右侧",
             "quantity": 1,
-            "confidence": 0.97
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "cabinet",
-            "name_cn": "橱柜",
-            "position": "背景墙",
+            "name": "电脑",
+            "name_cn": "电脑",
+            "position": "右侧",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "refrigerator",
-            "name_cn": "冰箱",
+            "name": "隔断墙",
+            "name_cn": "隔断墙",
+            "position": "右侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "门",
+            "name_cn": "门",
             "position": "左侧",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "water_bottle",
-            "name_cn": "水瓶",
-            "position": "地面，靠近橱柜",
+            "name": "行李箱",
+            "name_cn": "行李箱",
+            "position": "左侧背景",
             "quantity": 1,
-            "confidence": 0.92
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "背包",
+            "name_cn": "背包",
+            "position": "左侧背景",
+            "quantity": 1,
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "海报/公告栏",
+            "name_cn": "海报/公告栏",
+            "position": "右侧背景",
+            "quantity": 5,
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "包裹",
+            "name_cn": "包裹",
+            "position": "前景",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "垃圾桶",
+            "name_cn": "垃圾桶",
+            "position": "背景左侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "消防箱",
+            "name_cn": "消防箱",
+            "position": "右侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "储物箱",
+            "name_cn": "储物箱",
+            "position": "背景右侧",
+            "quantity": 2,
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           }
         ],
-        "description": "一条现代化的办公室走廊，左侧墙上有一个展示奖杯和书籍的架子，右侧有一把办公椅。 | 一张办公室的照片，显示了一个办公隔间，里面有一个人坐在电脑前工作，前景有蓝色和红色的装饰物。 | 这是一张室内走廊的图片，地面为浅色木地板，左侧有一个红色消防柜和垃圾桶，中间堆放着桶装水，右侧有一扇门和一个长凳。 | 一张办公室的照片，显示了带有浅色橱柜的背景墙、一个黑色垃圾桶、一个冰箱和一把椅子。",
-        "aliases": [],
-        "semantic_tags": []
+        "semantic_tags": [
+          "office",
+          "办公室",
+          "办公椅",
+          "圆桌",
+          "红色雨伞",
+          "储物柜",
+          "置物架",
+          "公告栏",
+          "文件",
+          "办公桌",
+          "电脑",
+          "隔断墙",
+          "门",
+          "行李箱",
+          "背包",
+          "海报/公告栏",
+          "包裹",
+          "垃圾桶",
+          "消防箱",
+          "储物箱"
+        ],
+        "description": "这是一个现代化的办公室环境，地面为浅色木质地板，房间内摆放着两把黑色办公椅和一张圆桌。背景中可以看到一个红色雨伞，右侧有黄色储物柜，左侧有置物架，整体空间整洁明亮。 | 这是一间办公室的局部图像，显示了墙壁底部的踢脚线和地面。背景墙上有一个公告栏，上面贴有几张文件。左侧可以看到部分办公设备和灯光。 | 这是一间现代化的办公室，左侧有一扇玻璃门，背景处有行李箱和背包。右侧是办公区域，一名员工正在工位上工作，墙上挂有多个海报或公告栏。房间整体光线明亮，地面为灰色地毯和浅色木地板。 | 这是一个办公室或后勤区域的场景，地面为浅色地板。前景有一个用塑料膜包裹的大型包裹，背景左侧有一个黑色垃圾桶和办公桌，右侧有一个红色的消防箱和两个储物箱。整体环境整洁，物品摆放有序。"
+      },
+      "search_objects": {
+        "办公椅": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公椅",
+          "name_cn": "办公椅"
+        },
+        "圆桌": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "圆桌",
+          "name_cn": "圆桌"
+        },
+        "红色雨伞": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6575,
+          "best_confidence": 0.8500000238418579,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "红色雨伞",
+          "name_cn": "红色雨伞"
+        },
+        "储物柜": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "储物柜",
+          "name_cn": "储物柜"
+        },
+        "置物架": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6575,
+          "best_confidence": 0.8500000238418579,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "置物架",
+          "name_cn": "置物架"
+        },
+        "公告栏": {
+          "supporting_angles": [
+            90
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "公告栏",
+          "name_cn": "公告栏"
+        },
+        "文件": {
+          "supporting_angles": [
+            90
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "文件",
+          "name_cn": "文件"
+        },
+        "办公桌": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公桌",
+          "name_cn": "办公桌"
+        },
+        "电脑": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "电脑",
+          "name_cn": "电脑"
+        },
+        "隔断墙": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "隔断墙",
+          "name_cn": "隔断墙"
+        },
+        "门": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "门",
+          "name_cn": "门"
+        },
+        "行李箱": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "行李箱",
+          "name_cn": "行李箱"
+        },
+        "背包": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "背包",
+          "name_cn": "背包"
+        },
+        "海报/公告栏": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "海报/公告栏",
+          "name_cn": "海报/公告栏"
+        },
+        "包裹": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "包裹",
+          "name_cn": "包裹"
+        },
+        "垃圾桶": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "垃圾桶",
+          "name_cn": "垃圾桶"
+        },
+        "消防箱": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "消防箱",
+          "name_cn": "消防箱"
+        },
+        "储物箱": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "储物箱",
+          "name_cn": "储物箱"
+        }
       },
       "created_time": 1776194861.7917683,
-      "last_updated": 1776194861.7917686
+      "last_updated": 1776603213.4957473
     },
     {
       "id": 1,
-      "name": "走廊2",
+      "name": "办公室/会议室/办公室-垃圾桶旁",
       "pose": {
         "x": 2.71,
         "y": -3.284,
@@ -368,44 +849,86 @@
           "image_path": "captured_nodes/node_1/000deg_rgb.png",
           "depth_path": "captured_nodes/node_1/000deg_depth.png",
           "semantic_info": {
-            "room_type": "office",
-            "room_type_cn": "办公室",
-            "confidence": 0.95,
+            "room_type": "office_meeting_room",
+            "room_type_cn": "办公室/会议室",
+            "aliases": [
+              "办公室/会议室",
+              "办公桌",
+              "办公椅",
+              "冰箱",
+              "橱柜",
+              "杯子"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "office chair",
+                "name": "办公桌",
+                "name_cn": "办公桌",
+                "position": "左上",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "办公椅",
                 "name_cn": "办公椅",
-                "position": "房间中央和左侧",
+                "position": "左上",
                 "quantity": 3,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "table",
-                "name_cn": "桌子",
-                "position": "房间中央，位于两把办公椅之间",
+                "name": "冰箱",
+                "name_cn": "冰箱",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.95
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "file cabinet",
-                "name_cn": "文件柜",
-                "position": "房间右侧墙边",
+                "name": "橱柜",
+                "name_cn": "橱柜",
+                "position": "右",
                 "quantity": 1,
-                "confidence": 0.92
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "box",
-                "name_cn": "纸箱",
-                "position": "文件柜旁边",
-                "quantity": 1,
-                "confidence": 0.9
+                "name": "杯子",
+                "name_cn": "杯子",
+                "position": "橱柜上",
+                "quantity": 2,
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张低角度拍摄的办公室照片，显示了三把办公椅、一张小圆桌和一个文件柜。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office_meeting_room",
+              "办公室/会议室",
+              "办公桌",
+              "办公椅",
+              "冰箱",
+              "橱柜",
+              "杯子"
+            ],
+            "description": "这是一个办公室或会议室的场景，地面为浅色木地板，左侧有一张圆形办公桌和几把办公椅，右侧是一个黄色的橱柜，背景中可以看到一台冰箱。"
           },
-          "capture_time": 1776194864.80457
+          "capture_time": 1776603032.8398283
         },
         "90": {
           "angle": 90,
@@ -414,226 +937,464 @@
           "semantic_info": {
             "room_type": "office",
             "room_type_cn": "办公室",
-            "confidence": 0.95,
+            "aliases": [
+              "办公室",
+              "办公椅",
+              "桌子"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "chair",
-                "name_cn": "椅子",
-                "position": "画面右侧，部分可见",
+                "name": "办公椅",
+                "name_cn": "办公椅",
+                "position": "前景",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "desk",
+                "name": "桌子",
                 "name_cn": "桌子",
-                "position": "背景区域，位于左侧和中部",
-                "quantity": 2,
-                "confidence": 0.9
-              },
-              {
-                "name": "computer_monitor",
-                "name_cn": "电脑显示器",
-                "position": "桌子上，背景区域",
-                "quantity": 3,
-                "confidence": 0.85
-              },
-              {
-                "name": "poster",
-                "name_cn": "海报/图表",
-                "position": "背景左侧的墙上",
-                "quantity": 5,
-                "confidence": 0.9
+                "position": "中心",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张办公室的低角度照片，显示了办公桌、电脑和椅子，地面为浅色地板。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "办公椅",
+              "桌子"
+            ],
+            "description": "这是一间办公室的场景，地面为浅色地板，前景中有一把黑色的办公椅，旁边是一张带有金属支架的桌子。背景墙上有一个告示栏，上面贴有文件和一些小物件。"
           },
-          "capture_time": 1776194867.69766
+          "capture_time": 1776603032.4392114
         },
         "180": {
           "angle": 180,
           "image_path": "captured_nodes/node_1/180deg_rgb.png",
           "depth_path": "captured_nodes/node_1/180deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "room_type": "office",
+            "room_type_cn": "办公室",
+            "aliases": [
+              "办公室",
+              "垃圾桶",
+              "纸箱",
+              "办公桌",
+              "电脑显示器",
+              "海报/公告栏"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "cabinet",
-                "name_cn": "橱柜",
-                "position": "左侧墙壁下方",
-                "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "trash bin",
+                "name": "垃圾桶",
                 "name_cn": "垃圾桶",
-                "position": "右侧，靠近墙角",
+                "position": "左前景",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.9800000190734863,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "cardboard",
-                "name_cn": "纸板",
-                "position": "垃圾桶旁边，靠墙放置",
+                "name": "纸箱",
+                "name_cn": "纸箱",
+                "position": "中心前景",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.9700000286102295,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "door",
-                "name_cn": "门",
-                "position": "右侧远处",
+                "name": "办公桌",
+                "name_cn": "办公桌",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.8
+                "confidence": 0.9200000166893005,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "电脑显示器",
+                "name_cn": "电脑显示器",
+                "position": "背景",
+                "quantity": 1,
+                "confidence": 0.9300000071525574,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "海报/公告栏",
+                "name_cn": "海报/公告栏",
+                "position": "背景右侧",
+                "quantity": 1,
+                "confidence": 0.9399999976158142,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张低角度拍摄的室内走廊照片，左侧有黄色橱柜，右侧有一个黑色垃圾桶和一块纸板，地面为浅色木质地板。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "垃圾桶",
+              "纸箱",
+              "办公桌",
+              "电脑显示器",
+              "海报/公告栏"
+            ],
+            "description": "这是一间现代化办公室的场景，地面为浅色木地板，左侧有一个标有“其他垃圾”的黑色垃圾桶和一个用塑料膜包裹的纸箱。背景中可以看到办公隔间、办公桌和电脑显示器，墙上挂有海报或公告栏。"
           },
-          "capture_time": 1776194870.7852542
+          "capture_time": 1776603033.4556124
         },
         "270": {
           "angle": 270,
           "image_path": "captured_nodes/node_1/270deg_rgb.png",
           "depth_path": "captured_nodes/node_1/270deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "room_type": "kitchen",
+            "room_type_cn": "厨房",
+            "aliases": [
+              "厨房",
+              "橱柜"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "water_bottle",
-                "name_cn": "水瓶",
-                "position": "地面，靠近柜子",
+                "name": "橱柜",
+                "name_cn": "橱柜",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "cabinet",
-                "name_cn": "柜子",
-                "position": "背景墙，沿墙分布",
-                "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张室内走廊的照片，地面上有一个水瓶，背景是浅色的柜子。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "kitchen",
+              "厨房",
+              "橱柜"
+            ],
+            "description": "这是一张厨房的局部图像，显示了米色的橱柜和浅灰色的地板，整体风格简洁现代。"
           },
-          "capture_time": 1776194872.741091
+          "capture_time": 1776603031.590476
         }
       },
       "panorama_paths": {},
       "semantic_info": {
         "room_type": "office",
-        "room_type_cn": "走廊",
-        "confidence": 0.9249999999999999,
+        "room_type_cn": "办公室",
+        "aliases": [
+          "办公室",
+          "办公桌",
+          "办公椅",
+          "冰箱",
+          "橱柜",
+          "杯子",
+          "桌子",
+          "垃圾桶",
+          "纸箱",
+          "电脑显示器",
+          "海报/公告栏"
+        ],
+        "confidence": 0.949999988079071,
         "objects": [
           {
-            "name": "office chair",
+            "name": "办公桌",
+            "name_cn": "办公桌",
+            "position": "左上",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "办公椅",
             "name_cn": "办公椅",
-            "position": "房间中央和左侧",
+            "position": "左上",
             "quantity": 3,
-            "confidence": 0.98
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "table",
-            "name_cn": "桌子",
-            "position": "房间中央，位于两把办公椅之间",
+            "name": "冰箱",
+            "name_cn": "冰箱",
+            "position": "背景",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "file cabinet",
-            "name_cn": "文件柜",
-            "position": "房间右侧墙边",
+            "name": "橱柜",
+            "name_cn": "橱柜",
+            "position": "右",
             "quantity": 1,
-            "confidence": 0.92
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "box",
-            "name_cn": "纸箱",
-            "position": "文件柜旁边",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "chair",
-            "name_cn": "椅子",
-            "position": "画面右侧，部分可见",
-            "quantity": 1,
-            "confidence": 0.98
-          },
-          {
-            "name": "desk",
-            "name_cn": "桌子",
-            "position": "背景区域，位于左侧和中部",
+            "name": "杯子",
+            "name_cn": "杯子",
+            "position": "橱柜上",
             "quantity": 2,
-            "confidence": 0.9
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "computer_monitor",
-            "name_cn": "电脑显示器",
-            "position": "桌子上，背景区域",
-            "quantity": 3,
-            "confidence": 0.85
-          },
-          {
-            "name": "poster",
-            "name_cn": "海报/图表",
-            "position": "背景左侧的墙上",
-            "quantity": 5,
-            "confidence": 0.9
-          },
-          {
-            "name": "cabinet",
-            "name_cn": "柜子",
-            "position": "背景墙，沿墙分布",
+            "name": "桌子",
+            "name_cn": "桌子",
+            "position": "中心",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "trash bin",
+            "name": "垃圾桶",
             "name_cn": "垃圾桶",
-            "position": "右侧，靠近墙角",
+            "position": "左前景",
             "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.9800000190734863,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "cardboard",
-            "name_cn": "纸板",
-            "position": "垃圾桶旁边，靠墙放置",
+            "name": "纸箱",
+            "name_cn": "纸箱",
+            "position": "中心前景",
             "quantity": 1,
-            "confidence": 0.85
+            "confidence": 0.9700000286102295,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "door",
-            "name_cn": "门",
-            "position": "右侧远处",
+            "name": "电脑显示器",
+            "name_cn": "电脑显示器",
+            "position": "背景",
             "quantity": 1,
-            "confidence": 0.8
+            "confidence": 0.9300000071525574,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "water_bottle",
-            "name_cn": "水瓶",
-            "position": "地面，靠近柜子",
+            "name": "海报/公告栏",
+            "name_cn": "海报/公告栏",
+            "position": "背景右侧",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.9399999976158142,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           }
         ],
-        "description": "一张低角度拍摄的办公室照片，显示了三把办公椅、一张小圆桌和一个文件柜。 | 一张办公室的低角度照片，显示了办公桌、电脑和椅子，地面为浅色地板。 | 一张低角度拍摄的室内走廊照片，左侧有黄色橱柜，右侧有一个黑色垃圾桶和一块纸板，地面为浅色木质地板。 | 一张室内走廊的照片，地面上有一个水瓶，背景是浅色的柜子。",
-        "aliases": [],
-        "semantic_tags": []
+        "semantic_tags": [
+          "office",
+          "办公室",
+          "办公桌",
+          "办公椅",
+          "冰箱",
+          "橱柜",
+          "杯子",
+          "桌子",
+          "垃圾桶",
+          "纸箱",
+          "电脑显示器",
+          "海报/公告栏"
+        ],
+        "description": "这是一个办公室或会议室的场景，地面为浅色木地板，左侧有一张圆形办公桌和几把办公椅，右侧是一个黄色的橱柜，背景中可以看到一台冰箱。 | 这是一间办公室的场景，地面为浅色地板，前景中有一把黑色的办公椅，旁边是一张带有金属支架的桌子。背景墙上有一个告示栏，上面贴有文件和一些小物件。 | 这是一间现代化办公室的场景，地面为浅色木地板，左侧有一个标有“其他垃圾”的黑色垃圾桶和一个用塑料膜包裹的纸箱。背景中可以看到办公隔间、办公桌和电脑显示器，墙上挂有海报或公告栏。 | 这是一张厨房的局部图像，显示了米色的橱柜和浅灰色的地板，整体风格简洁现代。"
+      },
+      "search_objects": {
+        "办公桌": {
+          "supporting_angles": [
+            0,
+            180
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公桌",
+          "name_cn": "办公桌"
+        },
+        "办公椅": {
+          "supporting_angles": [
+            0,
+            90
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公椅",
+          "name_cn": "办公椅"
+        },
+        "冰箱": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "冰箱",
+          "name_cn": "冰箱"
+        },
+        "橱柜": {
+          "supporting_angles": [
+            0,
+            270
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "橱柜",
+          "name_cn": "橱柜"
+        },
+        "杯子": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "杯子",
+          "name_cn": "杯子"
+        },
+        "桌子": {
+          "supporting_angles": [
+            90
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "桌子",
+          "name_cn": "桌子"
+        },
+        "垃圾桶": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.7095,
+          "best_confidence": 0.9800000190734863,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "垃圾桶",
+          "name_cn": "垃圾桶"
+        },
+        "纸箱": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.7055,
+          "best_confidence": 0.9700000286102295,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "纸箱",
+          "name_cn": "纸箱"
+        },
+        "电脑显示器": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6895,
+          "best_confidence": 0.9300000071525574,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "电脑显示器",
+          "name_cn": "电脑显示器"
+        },
+        "海报/公告栏": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6935,
+          "best_confidence": 0.9399999976158142,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "海报/公告栏",
+          "name_cn": "海报/公告栏"
+        }
       },
       "created_time": 1776194872.7411296,
-      "last_updated": 1776194872.7411299
+      "last_updated": 1776603033.455749
     },
     {
       "id": 2,
-      "name": "走廊3",
+      "name": "走廊/客厅-奖杯旁",
       "pose": {
         "x": 5.23,
         "y": -0.138,
@@ -647,79 +1408,92 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
-            "confidence": 0.95,
+            "aliases": [
+              "走廊",
+              "奖杯",
+              "公告板",
+              "灭火器"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "carpet",
-                "name_cn": "地毯",
-                "position": "地面中央",
+                "name": "奖杯",
+                "name_cn": "奖杯",
+                "position": "左上",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "bag",
-                "name_cn": "包",
-                "position": "右侧地面上",
+                "name": "公告板",
+                "name_cn": "公告板",
+                "position": "左上",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "fire_extinguisher",
+                "name": "灭火器",
                 "name_cn": "灭火器",
-                "position": "远处左侧墙边",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.85
-              },
-              {
-                "name": "door",
-                "name_cn": "门",
-                "position": "远处尽头",
-                "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一条狭长的室内走廊，地面铺有地毯，右侧地面上有一个红色的包。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "奖杯",
+              "公告板",
+              "灭火器"
+            ],
+            "description": "这是一条室内走廊，墙壁为浅色，地面铺有灰色地毯。左侧墙上有一个带小架子的公告板，上面放置着奖杯和文件。走廊尽头有一扇门，旁边放置了一个红色灭火器。"
           },
-          "capture_time": 1776194875.688627
+          "capture_time": 1776603088.3379679
         },
         "90": {
           "angle": 90,
           "image_path": "captured_nodes/node_2/090deg_rgb.png",
           "depth_path": "captured_nodes/node_2/090deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "room_type": "living_room",
+            "room_type_cn": "客厅",
+            "aliases": [
+              "客厅",
+              "耳机"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "books",
-                "name_cn": "书籍",
-                "position": "墙上白色置物架上",
-                "quantity": 5,
-                "confidence": 0.85
-              },
-              {
-                "name": "toy",
-                "name_cn": "玩具",
-                "position": "墙上白色置物架上，书籍旁边",
+                "name": "耳机",
+                "name_cn": "耳机",
+                "position": "前景",
                 "quantity": 1,
-                "confidence": 0.7
-              },
-              {
-                "name": "carpet",
-                "name_cn": "地毯",
-                "position": "地面",
-                "quantity": 1,
-                "confidence": 0.95
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张低角度拍摄的室内走廊照片，墙上有置物架摆放着书籍和一个玩具，地面铺有灰色地毯。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "living_room",
+              "客厅",
+              "耳机"
+            ],
+            "description": "房间内有一个白色的耳机放置在地毯上，背景墙上装有带孔洞的置物架，上面摆放着书籍和玩偶。"
           },
-          "capture_time": 1776194878.3345587
+          "capture_time": 1776603087.1490655
         },
         "180": {
           "angle": 180,
@@ -728,196 +1502,548 @@
           "semantic_info": {
             "room_type": "office",
             "room_type_cn": "办公室",
-            "confidence": 0.95,
+            "aliases": [
+              "办公室",
+              "办公椅",
+              "办公桌",
+              "文件柜",
+              "电脑显示器"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "chair",
-                "name_cn": "椅子",
-                "position": "前景，靠近圆形桌子",
+                "name": "办公椅",
+                "name_cn": "办公椅",
+                "position": "前景",
                 "quantity": 2,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "table",
-                "name_cn": "桌子",
-                "position": "前景，位于两把椅子之间",
+                "name": "办公桌",
+                "name_cn": "办公桌",
+                "position": "前景",
                 "quantity": 1,
-                "confidence": 0.97
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "cabinet",
-                "name_cn": "橱柜",
-                "position": "背景左侧墙壁",
+                "name": "文件柜",
+                "name_cn": "文件柜",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.96
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "fire_extinguisher",
-                "name_cn": "灭火器",
-                "position": "背景右侧墙边",
-                "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "person",
-                "name_cn": "人",
-                "position": "背景右侧，坐在蓝色和红色的垫子上",
-                "quantity": 1,
-                "confidence": 0.94
+                "name": "电脑显示器",
+                "name_cn": "电脑显示器",
+                "position": "背景",
+                "quantity": 2,
+                "confidence": 0.8500000238418579,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张办公室的照片，前景有两张黑色办公椅和一张圆形桌子，背景中有一人坐在垫子上。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "办公椅",
+              "办公桌",
+              "文件柜",
+              "电脑显示器"
+            ],
+            "description": "这是一间现代化的办公室，地面铺有浅色和深色两种材质的地板。前景中有两把黑色的办公椅和一张圆形办公桌，背景中可以看到其他办公区域，配有电脑和办公椅，整体环境整洁明亮。"
           },
-          "capture_time": 1776194881.5889604
+          "capture_time": 1776603088.372235
         },
         "270": {
           "angle": 270,
           "image_path": "captured_nodes/node_2/270deg_rgb.png",
           "depth_path": "captured_nodes/node_2/270deg_depth.png",
           "semantic_info": {
-            "room_type": "office",
-            "room_type_cn": "办公室",
-            "confidence": 0.9,
+            "room_type": "kitchen",
+            "room_type_cn": "厨房",
+            "aliases": [
+              "厨房",
+              "雨伞",
+              "办公椅",
+              "圆桌",
+              "橱柜",
+              "冰箱",
+              "水瓶"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "office chair",
+                "name": "雨伞",
+                "name_cn": "雨伞",
+                "position": "前景左侧",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "办公椅",
                 "name_cn": "办公椅",
-                "position": "房间中央，靠近黄色柜子",
+                "position": "中心",
                 "quantity": 2,
-                "confidence": 0.95
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "bag",
-                "name_cn": "包",
-                "position": "房间左侧地板上",
+                "name": "圆桌",
+                "name_cn": "圆桌",
+                "position": "中心",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "cabinet",
-                "name_cn": "柜子",
-                "position": "房间右侧靠墙",
+                "name": "橱柜",
+                "name_cn": "橱柜",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "bottle",
-                "name_cn": "瓶子",
-                "position": "柜子旁边地板上",
+                "name": "冰箱",
+                "name_cn": "冰箱",
+                "position": "背景左侧",
                 "quantity": 1,
-                "confidence": 0.7
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "水瓶",
+                "name_cn": "水瓶",
+                "position": "前景右侧",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张办公室的室内照片，显示了两把办公椅、一个红色的包和一个柜子。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "kitchen",
+              "厨房",
+              "雨伞",
+              "办公椅",
+              "圆桌",
+              "橱柜",
+              "冰箱",
+              "水瓶"
+            ],
+            "description": "这是一个厨房场景，地面为浅色地板。房间内有一张圆形桌子和两把黑色办公椅，左侧有一个打开的红色雨伞，背景是黄色的橱柜和一台冰箱。"
           },
-          "capture_time": 1776194884.3925176
+          "capture_time": 1776603088.748922
         }
       },
       "panorama_paths": {},
       "semantic_info": {
-        "room_type": "office",
+        "room_type": "corridor",
         "room_type_cn": "走廊",
-        "confidence": 0.9249999999999999,
+        "aliases": [
+          "走廊",
+          "奖杯",
+          "公告板",
+          "灭火器",
+          "耳机",
+          "办公椅",
+          "办公桌",
+          "文件柜",
+          "电脑显示器",
+          "雨伞",
+          "圆桌",
+          "橱柜",
+          "冰箱",
+          "水瓶"
+        ],
+        "confidence": 0.949999988079071,
         "objects": [
           {
-            "name": "carpet",
-            "name_cn": "地毯",
-            "position": "地面中央",
+            "name": "奖杯",
+            "name_cn": "奖杯",
+            "position": "左上",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "bag",
-            "name_cn": "包",
-            "position": "右侧地面上",
+            "name": "公告板",
+            "name_cn": "公告板",
+            "position": "左上",
             "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "fire_extinguisher",
+            "name": "灭火器",
             "name_cn": "灭火器",
-            "position": "背景右侧墙边",
+            "position": "背景",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "door",
-            "name_cn": "门",
-            "position": "远处尽头",
+            "name": "耳机",
+            "name_cn": "耳机",
+            "position": "前景",
             "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "books",
-            "name_cn": "书籍",
-            "position": "墙上白色置物架上",
-            "quantity": 5,
-            "confidence": 0.85
-          },
-          {
-            "name": "toy",
-            "name_cn": "玩具",
-            "position": "墙上白色置物架上，书籍旁边",
-            "quantity": 1,
-            "confidence": 0.7
-          },
-          {
-            "name": "chair",
-            "name_cn": "椅子",
-            "position": "前景，靠近圆形桌子",
-            "quantity": 2,
-            "confidence": 0.98
-          },
-          {
-            "name": "table",
-            "name_cn": "桌子",
-            "position": "前景，位于两把椅子之间",
-            "quantity": 1,
-            "confidence": 0.97
-          },
-          {
-            "name": "cabinet",
-            "name_cn": "橱柜",
-            "position": "背景左侧墙壁",
-            "quantity": 1,
-            "confidence": 0.96
-          },
-          {
-            "name": "person",
-            "name_cn": "人",
-            "position": "背景右侧，坐在蓝色和红色的垫子上",
-            "quantity": 1,
-            "confidence": 0.94
-          },
-          {
-            "name": "office chair",
+            "name": "办公椅",
             "name_cn": "办公椅",
-            "position": "房间中央，靠近黄色柜子",
+            "position": "前景",
             "quantity": 2,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "bottle",
-            "name_cn": "瓶子",
-            "position": "柜子旁边地板上",
+            "name": "办公桌",
+            "name_cn": "办公桌",
+            "position": "前景",
             "quantity": 1,
-            "confidence": 0.7
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "文件柜",
+            "name_cn": "文件柜",
+            "position": "背景",
+            "quantity": 1,
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "电脑显示器",
+            "name_cn": "电脑显示器",
+            "position": "背景",
+            "quantity": 2,
+            "confidence": 0.8500000238418579,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "雨伞",
+            "name_cn": "雨伞",
+            "position": "前景左侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "圆桌",
+            "name_cn": "圆桌",
+            "position": "中心",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "橱柜",
+            "name_cn": "橱柜",
+            "position": "背景",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "冰箱",
+            "name_cn": "冰箱",
+            "position": "背景左侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "水瓶",
+            "name_cn": "水瓶",
+            "position": "前景右侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           }
         ],
-        "description": "一条狭长的室内走廊，地面铺有地毯，右侧地面上有一个红色的包。 | 一张低角度拍摄的室内走廊照片，墙上有置物架摆放着书籍和一个玩具，地面铺有灰色地毯。 | 一张办公室的照片，前景有两张黑色办公椅和一张圆形桌子，背景中有一人坐在垫子上。 | 一张办公室的室内照片，显示了两把办公椅、一个红色的包和一个柜子。",
-        "aliases": [],
-        "semantic_tags": []
+        "semantic_tags": [
+          "corridor",
+          "走廊",
+          "奖杯",
+          "公告板",
+          "灭火器",
+          "耳机",
+          "办公椅",
+          "办公桌",
+          "文件柜",
+          "电脑显示器",
+          "雨伞",
+          "圆桌",
+          "橱柜",
+          "冰箱",
+          "水瓶"
+        ],
+        "description": "这是一条室内走廊，墙壁为浅色，地面铺有灰色地毯。左侧墙上有一个带小架子的公告板，上面放置着奖杯和文件。走廊尽头有一扇门，旁边放置了一个红色灭火器。 | 房间内有一个白色的耳机放置在地毯上，背景墙上装有带孔洞的置物架，上面摆放着书籍和玩偶。 | 这是一间现代化的办公室，地面铺有浅色和深色两种材质的地板。前景中有两把黑色的办公椅和一张圆形办公桌，背景中可以看到其他办公区域，配有电脑和办公椅，整体环境整洁明亮。 | 这是一个厨房场景，地面为浅色地板。房间内有一张圆形桌子和两把黑色办公椅，左侧有一个打开的红色雨伞，背景是黄色的橱柜和一台冰箱。"
+      },
+      "search_objects": {
+        "奖杯": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "奖杯",
+          "name_cn": "奖杯"
+        },
+        "公告板": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "公告板",
+          "name_cn": "公告板"
+        },
+        "灭火器": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "灭火器",
+          "name_cn": "灭火器"
+        },
+        "耳机": {
+          "supporting_angles": [
+            90
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "耳机",
+          "name_cn": "耳机"
+        },
+        "办公椅": {
+          "supporting_angles": [
+            180,
+            270
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公椅",
+          "name_cn": "办公椅"
+        },
+        "办公桌": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公桌",
+          "name_cn": "办公桌"
+        },
+        "文件柜": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "文件柜",
+          "name_cn": "文件柜"
+        },
+        "电脑显示器": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6575,
+          "best_confidence": 0.8500000238418579,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "电脑显示器",
+          "name_cn": "电脑显示器"
+        },
+        "雨伞": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "雨伞",
+          "name_cn": "雨伞"
+        },
+        "圆桌": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "圆桌",
+          "name_cn": "圆桌"
+        },
+        "橱柜": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "橱柜",
+          "name_cn": "橱柜"
+        },
+        "冰箱": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "冰箱",
+          "name_cn": "冰箱"
+        },
+        "水瓶": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "水瓶",
+          "name_cn": "水瓶"
+        }
       },
       "created_time": 1776194884.392556,
-      "last_updated": 1776194884.392556
+      "last_updated": 1776603088.7491415
     },
     {
       "id": 3,
-      "name": "走廊4",
+      "name": "走廊/卧室-灭火器旁",
       "pose": {
         "x": 8.466,
         "y": -0.042,
@@ -931,256 +2057,482 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
-            "confidence": 0.95,
+            "aliases": [
+              "走廊",
+              "灭火器",
+              "门"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "backpack",
-                "name_cn": "背包",
-                "position": "右侧墙边",
-                "quantity": 1,
-                "confidence": 0.9
-              },
-              {
-                "name": "fire_extinguisher",
+                "name": "灭火器",
                 "name_cn": "灭火器",
-                "position": "远处左侧墙边",
+                "position": "左侧背景",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "door",
+                "name": "门",
                 "name_cn": "门",
-                "position": "远处尽头",
+                "position": "中心背景",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.9800000190734863,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一条铺有灰色地毯的室内走廊，两侧有白色墙壁和多扇门，右侧墙边放着一个黑色背包。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "灭火器",
+              "门"
+            ],
+            "description": "这是一条铺有灰色地毯的室内走廊，墙壁为白色，两侧有多扇关闭的门。远处背景中有一扇玻璃门和一个红色的灭火器。"
           },
-          "capture_time": 1776194886.77462
+          "capture_time": 1776602501.7400563
         },
         "90": {
           "angle": 90,
           "image_path": "captured_nodes/node_3/090deg_rgb.png",
           "depth_path": "captured_nodes/node_3/090deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "room_type": "bedroom",
+            "room_type_cn": "卧室",
+            "aliases": [
+              "卧室",
+              "踢脚线"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "wall",
-                "name_cn": "墙壁",
-                "position": "占据画面大部分区域，为浅色墙面，底部有踢脚线。",
+                "name": "踢脚线",
+                "name_cn": "踢脚线",
+                "position": "下",
                 "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "carpet",
-                "name_cn": "地毯",
-                "position": "位于画面下方，覆盖地面。",
-                "quantity": 1,
-                "confidence": 0.9
-              },
-              {
-                "name": "pegboard",
-                "name_cn": "带孔板",
-                "position": "位于画面左上角，固定在墙上，上面有一个金属挂钩。",
-                "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张低角度拍摄的室内走廊照片，显示了浅色墙壁、地毯和墙上的带孔板。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "bedroom",
+              "卧室",
+              "踢脚线"
+            ],
+            "description": "这是一张房间的局部图像，显示了白色的墙壁和灰色的地毯。墙角处有白色的踢脚线，地面为灰色地毯，整体环境简洁干净。"
           },
-          "capture_time": 1776194889.3590908
+          "capture_time": 1776602501.6150331
         },
         "180": {
           "angle": 180,
           "image_path": "captured_nodes/node_3/180deg_rgb.png",
           "depth_path": "captured_nodes/node_3/180deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.95,
+            "room_type": "office",
+            "room_type_cn": "办公室",
+            "aliases": [
+              "办公室",
+              "办公椅",
+              "置物架",
+              "奖杯",
+              "装饰品",
+              "地垫"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "chair",
-                "name_cn": "椅子",
-                "position": "走廊左侧，远处有一张办公椅",
-                "quantity": 1,
-                "confidence": 0.9
+                "name": "办公椅",
+                "name_cn": "办公椅",
+                "position": "左侧",
+                "quantity": 2,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "desk",
-                "name_cn": "桌子",
-                "position": "走廊左侧，椅子旁边有一张桌子",
+                "name": "置物架",
+                "name_cn": "置物架",
+                "position": "右侧",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "person",
-                "name_cn": "人",
-                "position": "走廊右侧，坐在红色和蓝色积木旁",
+                "name": "奖杯",
+                "name_cn": "奖杯",
+                "position": "右侧置物架上",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "toys",
-                "name_cn": "玩具",
-                "position": "走廊右侧，人旁边有红色和蓝色的积木",
+                "name": "装饰品",
+                "name_cn": "装饰品",
+                "position": "右侧置物架上",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "lighting",
-                "name_cn": "照明",
-                "position": "天花板上",
-                "quantity": 6,
-                "confidence": 0.95
+                "name": "地垫",
+                "name_cn": "地垫",
+                "position": "前景",
+                "quantity": 1,
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "这是一张从低角度拍摄的室内走廊照片，走廊两侧有白色的墙壁和灰色的地毯，远处可以看到办公桌、椅子和一个坐在积木旁的人。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "office",
+              "办公室",
+              "办公椅",
+              "置物架",
+              "奖杯",
+              "装饰品",
+              "地垫"
+            ],
+            "description": "这是一间办公室的走廊，地面铺有灰色地毯，墙壁为白色。左侧有两把办公椅和一个红色垃圾桶，右侧墙上有一个置物架，上面摆放着奖杯和装饰品。远处可以看到一个人坐在办公椅上。"
           },
-          "capture_time": 1776194892.997872
+          "capture_time": 1776602503.4721344
         },
         "270": {
           "angle": 270,
           "image_path": "captured_nodes/node_3/270deg_rgb.png",
           "depth_path": "captured_nodes/node_3/270deg_depth.png",
           "semantic_info": {
-            "room_type": "corridor",
-            "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "room_type": "unknown",
+            "room_type_cn": "未知",
+            "aliases": [
+              "未知",
+              "踢脚线",
+              "地毯"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "baseboard",
+                "name": "踢脚线",
                 "name_cn": "踢脚线",
-                "position": "墙壁底部",
+                "position": "背景",
                 "quantity": 1,
-                "confidence": 0.95
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "carpet",
+                "name": "地毯",
                 "name_cn": "地毯",
-                "position": "地面",
+                "position": "前景",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张显示走廊角落的图片，墙壁底部有踢脚线，地面铺有地毯。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "unknown",
+              "未知",
+              "踢脚线",
+              "地毯"
+            ],
+            "description": "这是一张房间角落的特写图像，显示了灰色的墙壁、白色的踢脚线和深色的地毯。由于视角限制，无法确定具体的房间类型。"
           },
-          "capture_time": 1776194894.870182
+          "capture_time": 1776602501.9079094
         }
       },
       "panorama_paths": {},
       "semantic_info": {
         "room_type": "corridor",
         "room_type_cn": "走廊",
-        "confidence": 0.9249999999999999,
+        "aliases": [
+          "走廊",
+          "灭火器",
+          "门",
+          "踢脚线",
+          "办公椅",
+          "置物架",
+          "奖杯",
+          "装饰品",
+          "地垫",
+          "地毯"
+        ],
+        "confidence": 0.949999988079071,
         "objects": [
           {
-            "name": "backpack",
-            "name_cn": "背包",
-            "position": "右侧墙边",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "fire_extinguisher",
+            "name": "灭火器",
             "name_cn": "灭火器",
-            "position": "远处左侧墙边",
+            "position": "左侧背景",
             "quantity": 1,
-            "confidence": 0.85
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "door",
+            "name": "门",
             "name_cn": "门",
-            "position": "远处尽头",
+            "position": "中心背景",
             "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.9800000190734863,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "wall",
-            "name_cn": "墙壁",
-            "position": "占据画面大部分区域，为浅色墙面，底部有踢脚线。",
-            "quantity": 1,
-            "confidence": 0.95
-          },
-          {
-            "name": "carpet",
-            "name_cn": "地毯",
-            "position": "位于画面下方，覆盖地面。",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "pegboard",
-            "name_cn": "带孔板",
-            "position": "位于画面左上角，固定在墙上，上面有一个金属挂钩。",
-            "quantity": 1,
-            "confidence": 0.85
-          },
-          {
-            "name": "chair",
-            "name_cn": "椅子",
-            "position": "走廊左侧，远处有一张办公椅",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "desk",
-            "name_cn": "桌子",
-            "position": "走廊左侧，椅子旁边有一张桌子",
-            "quantity": 1,
-            "confidence": 0.85
-          },
-          {
-            "name": "person",
-            "name_cn": "人",
-            "position": "走廊右侧，坐在红色和蓝色积木旁",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "toys",
-            "name_cn": "玩具",
-            "position": "走廊右侧，人旁边有红色和蓝色的积木",
-            "quantity": 1,
-            "confidence": 0.85
-          },
-          {
-            "name": "lighting",
-            "name_cn": "照明",
-            "position": "天花板上",
-            "quantity": 6,
-            "confidence": 0.95
-          },
-          {
-            "name": "baseboard",
+            "name": "踢脚线",
             "name_cn": "踢脚线",
-            "position": "墙壁底部",
+            "position": "下",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "办公椅",
+            "name_cn": "办公椅",
+            "position": "左侧",
+            "quantity": 2,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "置物架",
+            "name_cn": "置物架",
+            "position": "右侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "奖杯",
+            "name_cn": "奖杯",
+            "position": "右侧置物架上",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "装饰品",
+            "name_cn": "装饰品",
+            "position": "右侧置物架上",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "地垫",
+            "name_cn": "地垫",
+            "position": "前景",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "地毯",
+            "name_cn": "地毯",
+            "position": "前景",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           }
         ],
-        "description": "一条铺有灰色地毯的室内走廊，两侧有白色墙壁和多扇门，右侧墙边放着一个黑色背包。 | 一张低角度拍摄的室内走廊照片，显示了浅色墙壁、地毯和墙上的带孔板。 | 这是一张从低角度拍摄的室内走廊照片，走廊两侧有白色的墙壁和灰色的地毯，远处可以看到办公桌、椅子和一个坐在积木旁的人。 | 一张显示走廊角落的图片，墙壁底部有踢脚线，地面铺有地毯。",
-        "aliases": [],
-        "semantic_tags": []
+        "semantic_tags": [
+          "corridor",
+          "走廊",
+          "灭火器",
+          "门",
+          "踢脚线",
+          "办公椅",
+          "置物架",
+          "奖杯",
+          "装饰品",
+          "地垫",
+          "地毯"
+        ],
+        "description": "这是一条铺有灰色地毯的室内走廊，墙壁为白色，两侧有多扇关闭的门。远处背景中有一扇玻璃门和一个红色的灭火器。 | 这是一张房间的局部图像，显示了白色的墙壁和灰色的地毯。墙角处有白色的踢脚线，地面为灰色地毯，整体环境简洁干净。 | 这是一间办公室的走廊，地面铺有灰色地毯，墙壁为白色。左侧有两把办公椅和一个红色垃圾桶，右侧墙上有一个置物架，上面摆放着奖杯和装饰品。远处可以看到一个人坐在办公椅上。 | 这是一张房间角落的特写图像，显示了灰色的墙壁、白色的踢脚线和深色的地毯。由于视角限制，无法确定具体的房间类型。"
+      },
+      "search_objects": {
+        "灭火器": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "灭火器",
+          "name_cn": "灭火器"
+        },
+        "门": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.7095,
+          "best_confidence": 0.9800000190734863,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "门",
+          "name_cn": "门"
+        },
+        "踢脚线": {
+          "supporting_angles": [
+            90,
+            270
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "踢脚线",
+          "name_cn": "踢脚线"
+        },
+        "办公椅": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "办公椅",
+          "name_cn": "办公椅"
+        },
+        "置物架": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "置物架",
+          "name_cn": "置物架"
+        },
+        "奖杯": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "奖杯",
+          "name_cn": "奖杯"
+        },
+        "装饰品": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "装饰品",
+          "name_cn": "装饰品"
+        },
+        "地垫": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "地垫",
+          "name_cn": "地垫"
+        },
+        "地毯": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "地毯",
+          "name_cn": "地毯"
+        }
       },
       "created_time": 1776194894.8702092,
-      "last_updated": 1776194894.8702092
+      "last_updated": 1776602503.472259
     },
     {
       "id": 4,
-      "name": "走廊5",
+      "name": "走廊-消防栓箱旁",
       "pose": {
         "x": 10.585,
         "y": -0.019,
@@ -1194,35 +2546,58 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
-            "confidence": 0.95,
+            "aliases": [
+              "走廊",
+              "消防栓箱",
+              "双开门",
+              "紧急出口指示牌"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "headphones",
-                "name_cn": "耳机",
-                "position": "左侧墙边地面上",
+                "name": "消防栓箱",
+                "name_cn": "消防栓箱",
+                "position": "左侧背景",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "fire_extinguisher",
-                "name_cn": "灭火器",
-                "position": "走廊中间偏左，门旁边",
+                "name": "双开门",
+                "name_cn": "双开门",
+                "position": "背景中心",
                 "quantity": 1,
-                "confidence": 0.95
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "door",
-                "name_cn": "门",
-                "position": "走廊尽头",
+                "name": "紧急出口指示牌",
+                "name_cn": "紧急出口指示牌",
+                "position": "上方背景",
                 "quantity": 1,
-                "confidence": 0.97
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一条铺有灰色地毯的室内走廊，左侧墙边地面上放着一副白色耳机，走廊尽头有一扇门，门旁边有一个红色的灭火器。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "消防栓箱",
+              "双开门",
+              "紧急出口指示牌"
+            ],
+            "description": "这是一条铺有灰色地毯的室内走廊，墙壁为白色，两侧有扶手。走廊尽头有一扇双开门，门上方有绿色的紧急出口指示牌。左侧墙边放置了一个红色的消防栓箱。"
           },
-          "capture_time": 1776194897.4205036
+          "capture_time": 1776602869.8134494
         },
         "90": {
           "angle": 90,
@@ -1231,35 +2606,32 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "aliases": [
+              "走廊",
+              "背包"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "table",
-                "name_cn": "桌子",
-                "position": "位于走廊尽头的房间内，靠墙放置",
+                "name": "背包",
+                "name_cn": "背包",
+                "position": "前景",
                 "quantity": 1,
-                "confidence": 0.85
-              },
-              {
-                "name": "chairs",
-                "name_cn": "椅子",
-                "position": "位于走廊尽头的房间内，桌子旁",
-                "quantity": 4,
-                "confidence": 0.75
-              },
-              {
-                "name": "glass_wall",
-                "name_cn": "玻璃墙",
-                "position": "位于走廊尽头的房间周围",
-                "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "从一个铺有灰色地毯的走廊视角，可以看到前方一个带有玻璃墙的办公区域，内部有一张桌子和几把椅子。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "背包"
+            ],
+            "description": "这是一个室内走廊的场景，地面铺有灰色地毯，一个黑色背包靠在墙角放置。背景中可以看到部分玻璃隔断和墙面装饰。"
           },
-          "capture_time": 1776194899.9291766
+          "capture_time": 1776602868.9921014
         },
         "180": {
           "angle": 180,
@@ -1268,21 +2640,45 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
-            "confidence": 0.9,
+            "aliases": [
+              "走廊",
+              "置物架",
+              "人物"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "person",
-                "name_cn": "人",
-                "position": "走廊远端右侧",
+                "name": "置物架",
+                "name_cn": "置物架",
+                "position": "右侧",
                 "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
+              },
+              {
+                "name": "人物",
+                "name_cn": "人物",
+                "position": "背景",
+                "quantity": 1,
+                "confidence": 0.8999999761581421,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "这是一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，远处可见一个人坐在椅子上。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "置物架",
+              "人物"
+            ],
+            "description": "这是一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，墙壁为白色。右侧墙上有一个多层置物架，上面摆放着一些装饰品。走廊尽头可以看到一个人坐在椅子上，整体环境简洁明亮。"
           },
-          "capture_time": 1776194955.085559
+          "capture_time": 1776602869.5572727
         },
         "270": {
           "angle": 270,
@@ -1291,92 +2687,283 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
-            "confidence": 0.95,
+            "aliases": [
+              "走廊",
+              "门框",
+              "地毯"
+            ],
+            "confidence": 0.949999988079071,
             "objects": [
               {
-                "name": "backpack",
-                "name_cn": "背包",
-                "position": "靠在墙边，位于画面右侧",
+                "name": "门框",
+                "name_cn": "门框",
+                "position": "中心",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               },
               {
-                "name": "door",
-                "name_cn": "门",
-                "position": "位于画面左侧，带有金属踢脚板",
+                "name": "地毯",
+                "name_cn": "地毯",
+                "position": "下",
                 "quantity": 1,
-                "confidence": 0.97
+                "confidence": 0.949999988079071,
+                "distance_hint": "unknown",
+                "salience": 0.5,
+                "visibility": "unknown",
+                "image_region": "mixed"
               }
             ],
-            "description": "一张室内走廊的照片，地面上铺着灰色地毯，墙边放着一个黑色背包。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "门框",
+              "地毯"
+            ],
+            "description": "这是一张显示房间角落的图像，主要可见一个白色的门框和灰色的地毯。两侧有金属质感的面板，整体环境简洁，可能是一个走廊或过渡区域。"
           },
-          "capture_time": 1776194905.0649288
+          "capture_time": 1776602869.1472225
         }
       },
       "panorama_paths": {},
       "semantic_info": {
         "room_type": "corridor",
         "room_type_cn": "走廊",
-        "confidence": 0.9333333333333332,
+        "aliases": [
+          "走廊",
+          "消防栓箱",
+          "双开门",
+          "紧急出口指示牌",
+          "背包",
+          "置物架",
+          "人物",
+          "门框",
+          "地毯"
+        ],
+        "confidence": 0.949999988079071,
         "objects": [
           {
-            "name": "headphones",
-            "name_cn": "耳机",
-            "position": "左侧墙边地面上",
+            "name": "消防栓箱",
+            "name_cn": "消防栓箱",
+            "position": "左侧背景",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "fire_extinguisher",
-            "name_cn": "灭火器",
-            "position": "走廊中间偏左，门旁边",
+            "name": "双开门",
+            "name_cn": "双开门",
+            "position": "背景中心",
             "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "door",
-            "name_cn": "门",
-            "position": "走廊尽头",
+            "name": "紧急出口指示牌",
+            "name_cn": "紧急出口指示牌",
+            "position": "上方背景",
             "quantity": 1,
-            "confidence": 0.97
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           },
           {
-            "name": "table",
-            "name_cn": "桌子",
-            "position": "位于走廊尽头的房间内，靠墙放置",
-            "quantity": 1,
-            "confidence": 0.85
-          },
-          {
-            "name": "chairs",
-            "name_cn": "椅子",
-            "position": "位于走廊尽头的房间内，桌子旁",
-            "quantity": 4,
-            "confidence": 0.75
-          },
-          {
-            "name": "glass_wall",
-            "name_cn": "玻璃墙",
-            "position": "位于走廊尽头的房间周围",
-            "quantity": 1,
-            "confidence": 0.9
-          },
-          {
-            "name": "backpack",
+            "name": "背包",
             "name_cn": "背包",
-            "position": "靠在墙边，位于画面右侧",
+            "position": "前景",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "置物架",
+            "name_cn": "置物架",
+            "position": "右侧",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "人物",
+            "name_cn": "人物",
+            "position": "背景",
+            "quantity": 1,
+            "confidence": 0.8999999761581421,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "门框",
+            "name_cn": "门框",
+            "position": "中心",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
+          },
+          {
+            "name": "地毯",
+            "name_cn": "地毯",
+            "position": "下",
+            "quantity": 1,
+            "confidence": 0.949999988079071,
+            "distance_hint": "unknown",
+            "salience": 0.5,
+            "visibility": "unknown",
+            "image_region": "mixed"
           }
         ],
-        "description": "一条铺有灰色地毯的室内走廊，左侧墙边地面上放着一副白色耳机，走廊尽头有一扇门，门旁边有一个红色的灭火器。 | 从一个铺有灰色地毯的走廊视角，可以看到前方一个带有玻璃墙的办公区域，内部有一张桌子和几把椅子。 | 一张室内走廊的照片，地面上铺着灰色地毯，墙边放着一个黑色背包。",
-        "aliases": [],
-        "semantic_tags": []
+        "semantic_tags": [
+          "corridor",
+          "走廊",
+          "消防栓箱",
+          "双开门",
+          "紧急出口指示牌",
+          "背包",
+          "置物架",
+          "人物",
+          "门框",
+          "地毯"
+        ],
+        "description": "这是一条铺有灰色地毯的室内走廊，墙壁为白色，两侧有扶手。走廊尽头有一扇双开门，门上方有绿色的紧急出口指示牌。左侧墙边放置了一个红色的消防栓箱。 | 这是一个室内走廊的场景，地面铺有灰色地毯，一个黑色背包靠在墙角放置。背景中可以看到部分玻璃隔断和墙面装饰。 | 这是一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，墙壁为白色。右侧墙上有一个多层置物架，上面摆放着一些装饰品。走廊尽头可以看到一个人坐在椅子上，整体环境简洁明亮。 | 这是一张显示房间角落的图像，主要可见一个白色的门框和灰色的地毯。两侧有金属质感的面板，整体环境简洁，可能是一个走廊或过渡区域。"
+      },
+      "search_objects": {
+        "消防栓箱": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "消防栓箱",
+          "name_cn": "消防栓箱"
+        },
+        "双开门": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "双开门",
+          "name_cn": "双开门"
+        },
+        "紧急出口指示牌": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "紧急出口指示牌",
+          "name_cn": "紧急出口指示牌"
+        },
+        "背包": {
+          "supporting_angles": [
+            90
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "背包",
+          "name_cn": "背包"
+        },
+        "置物架": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "置物架",
+          "name_cn": "置物架"
+        },
+        "人物": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.6775,
+          "best_confidence": 0.8999999761581421,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "人物",
+          "name_cn": "人物"
+        },
+        "门框": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "门框",
+          "name_cn": "门框"
+        },
+        "地毯": {
+          "supporting_angles": [
+            270
+          ],
+          "best_view_angle": 270,
+          "best_view_score": 0.6975,
+          "best_confidence": 0.949999988079071,
+          "distance_hint": "unknown",
+          "salience": 0.5,
+          "visibility": "unknown",
+          "image_region": "mixed",
+          "name": "地毯",
+          "name_cn": "地毯"
+        }
       },
       "created_time": 1776194905.0649562,
-      "last_updated": 1776194905.0649564
+      "last_updated": 1776602869.8135862
     },
     {
       "id": 5,
@@ -1394,35 +2981,47 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
+            "aliases": [
+              "走廊",
+              "灭火器箱",
+              "门"
+            ],
             "confidence": 0.95,
             "objects": [
               {
                 "name": "fire_extinguisher_cabinet",
                 "name_cn": "灭火器箱",
-                "position": "左侧墙壁附近",
+                "position": "左侧墙壁上，靠近镜头",
                 "quantity": 1,
-                "confidence": 0.98
-              },
-              {
-                "name": "bucket",
-                "name_cn": "水桶",
-                "position": "灭火器箱下方",
-                "quantity": 1,
-                "confidence": 0.95
+                "confidence": 0.98,
+                "distance_hint": "near",
+                "salience": 0.95,
+                "visibility": "full",
+                "image_region": "left"
               },
               {
                 "name": "door",
                 "name_cn": "门",
-                "position": "正前方",
+                "position": "走廊尽头",
                 "quantity": 1,
-                "confidence": 0.97
+                "confidence": 0.97,
+                "distance_hint": "far",
+                "salience": 0.9,
+                "visibility": "full",
+                "image_region": "center"
               }
             ],
-            "description": "这是一张室内走廊的照片，地面铺有灰色地毯，左侧墙边有一个红色的灭火器箱和一个水桶，前方有一扇带有玻璃窗的白色门。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "fire_extinguisher_cabinet",
+              "灭火器箱",
+              "door",
+              "门"
+            ],
+            "description": "这是一张室内走廊的导航图片，左侧有一个红色的灭火器箱，前方是一扇带有玻璃窗的白色门。"
           },
-          "capture_time": 1776194907.5423162
+          "capture_time": 1776445728.130418
         },
         "90": {
           "angle": 90,
@@ -1431,35 +3030,47 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
+            "aliases": [
+              "走廊",
+              "门",
+              "踢脚线"
+            ],
             "confidence": 0.95,
             "objects": [
               {
                 "name": "door",
                 "name_cn": "门",
-                "position": "图片右侧，带有长方形玻璃窗和金属下部装饰",
+                "position": "位于画面右侧，带有长条形玻璃窗和金属下部装饰。",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.98,
+                "distance_hint": "near",
+                "salience": 0.95,
+                "visibility": "partial",
+                "image_region": "right"
               },
               {
                 "name": "baseboard",
                 "name_cn": "踢脚线",
-                "position": "墙壁底部，白色",
+                "position": "沿着左侧墙壁底部延伸。",
                 "quantity": 1,
-                "confidence": 0.97
-              },
-              {
-                "name": "carpet",
-                "name_cn": "地毯",
-                "position": "地面覆盖物，灰色颗粒状",
-                "quantity": 1,
-                "confidence": 0.96
+                "confidence": 0.97,
+                "distance_hint": "near",
+                "salience": 0.9,
+                "visibility": "full",
+                "image_region": "left"
               }
             ],
-            "description": "一张低角度拍摄的室内走廊照片，显示了灰色地毯、白色踢脚线和一扇带有玻璃窗的门。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "door",
+              "门",
+              "baseboard",
+              "踢脚线"
+            ],
+            "description": "一张低角度拍摄的室内走廊照片，地面铺有灰色地毯，右侧有一扇带玻璃窗的门，左侧为白色墙壁和踢脚线。"
           },
-          "capture_time": 1776194909.980898
+          "capture_time": 1776445731.249702
         },
         "180": {
           "angle": 180,
@@ -1468,49 +3079,75 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
+            "aliases": [
+              "走廊",
+              "门",
+              "人",
+              "地毯",
+              "墙面装饰"
+            ],
             "confidence": 0.95,
             "objects": [
               {
                 "name": "door",
                 "name_cn": "门",
-                "position": "右侧墙壁上",
-                "quantity": 2,
-                "confidence": 0.9
+                "position": "右侧墙壁上，位于走廊尽头附近",
+                "quantity": 1,
+                "confidence": 0.85,
+                "distance_hint": "far",
+                "salience": 0.2,
+                "visibility": "partial",
+                "image_region": "right"
               },
               {
-                "name": "light",
-                "name_cn": "灯",
-                "position": "天花板上",
-                "quantity": 6,
-                "confidence": 0.95
+                "name": "people",
+                "name_cn": "人",
+                "position": "走廊尽头，靠近右侧墙壁",
+                "quantity": 2,
+                "confidence": 0.75,
+                "distance_hint": "far",
+                "salience": 0.3,
+                "visibility": "partial",
+                "image_region": "center"
               },
               {
                 "name": "carpet",
                 "name_cn": "地毯",
-                "position": "地面",
+                "position": "整个走廊地面",
                 "quantity": 1,
-                "confidence": 0.98
+                "confidence": 0.98,
+                "distance_hint": "near",
+                "salience": 0.9,
+                "visibility": "full",
+                "image_region": "center"
               },
               {
-                "name": "person",
-                "name_cn": "人",
-                "position": "走廊远端右侧",
-                "quantity": 2,
-                "confidence": 0.85
-              },
-              {
-                "name": "wall_socket",
-                "name_cn": "墙上的插座或装饰物",
-                "position": "右侧墙壁远端",
+                "name": "wall_decor",
+                "name_cn": "墙面装饰",
+                "position": "走廊右侧墙壁，靠近尽头",
                 "quantity": 1,
-                "confidence": 0.7
+                "confidence": 0.7,
+                "distance_hint": "far",
+                "salience": 0.25,
+                "visibility": "partial",
+                "image_region": "right"
               }
             ],
-            "description": "这是一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，两侧是白色墙壁和几扇门，远处可见几个人影。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "door",
+              "门",
+              "people",
+              "人",
+              "carpet",
+              "地毯",
+              "wall_decor",
+              "墙面装饰"
+            ],
+            "description": "一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，远处可见几个人影和墙面装饰。"
           },
-          "capture_time": 1776194913.2830663
+          "capture_time": 1776445735.7658617
         },
         "270": {
           "angle": 270,
@@ -1519,113 +3156,241 @@
           "semantic_info": {
             "room_type": "corridor",
             "room_type_cn": "走廊",
+            "aliases": [
+              "走廊",
+              "门",
+              "踢脚线"
+            ],
             "confidence": 0.9,
             "objects": [
               {
                 "name": "door",
                 "name_cn": "门",
-                "position": "画面左侧，垂直于墙壁",
+                "position": "位于画面左侧，与右侧墙壁相邻。",
                 "quantity": 1,
-                "confidence": 0.95
-              },
-              {
-                "name": "hinge",
-                "name_cn": "合页",
-                "position": "门与墙壁的连接处，位于门的右侧边缘",
-                "quantity": 1,
-                "confidence": 0.9
+                "confidence": 0.95,
+                "distance_hint": "near",
+                "salience": 0.9,
+                "visibility": "partial",
+                "image_region": "left"
               },
               {
                 "name": "baseboard",
                 "name_cn": "踢脚线",
-                "position": "墙壁底部，紧贴地面",
+                "position": "位于画面右侧底部，紧贴地面。",
                 "quantity": 1,
-                "confidence": 0.85
+                "confidence": 0.9,
+                "distance_hint": "near",
+                "salience": 0.8,
+                "visibility": "full",
+                "image_region": "right"
               }
             ],
-            "description": "一张显示走廊角落的图片，包含一扇关闭的白色门、一个合页和底部的踢脚线。",
-            "aliases": [],
-            "semantic_tags": []
+            "semantic_tags": [
+              "corridor",
+              "走廊",
+              "door",
+              "门",
+              "baseboard",
+              "踢脚线"
+            ],
+            "description": "一张室内走廊的近景照片，显示了一扇关闭的白色门和旁边的踢脚线。"
           },
-          "capture_time": 1776194915.869085
+          "capture_time": 1776445738.6888807
         }
       },
       "panorama_paths": {},
       "semantic_info": {
         "room_type": "corridor",
         "room_type_cn": "走廊",
+        "aliases": [
+          "走廊",
+          "灭火器箱",
+          "门",
+          "踢脚线",
+          "人",
+          "地毯",
+          "墙面装饰"
+        ],
         "confidence": 0.9374999999999999,
         "objects": [
           {
             "name": "fire_extinguisher_cabinet",
             "name_cn": "灭火器箱",
-            "position": "左侧墙壁附近",
+            "position": "左侧墙壁上，靠近镜头",
             "quantity": 1,
-            "confidence": 0.98
-          },
-          {
-            "name": "bucket",
-            "name_cn": "水桶",
-            "position": "灭火器箱下方",
-            "quantity": 1,
-            "confidence": 0.95
+            "confidence": 0.98,
+            "distance_hint": "near",
+            "salience": 0.95,
+            "visibility": "full",
+            "image_region": "left"
           },
           {
             "name": "door",
             "name_cn": "门",
-            "position": "图片右侧，带有长方形玻璃窗和金属下部装饰",
+            "position": "位于画面右侧，带有长条形玻璃窗和金属下部装饰。",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.98,
+            "distance_hint": "near",
+            "salience": 0.95,
+            "visibility": "partial",
+            "image_region": "right"
           },
           {
             "name": "baseboard",
             "name_cn": "踢脚线",
-            "position": "墙壁底部，白色",
+            "position": "沿着左侧墙壁底部延伸。",
             "quantity": 1,
-            "confidence": 0.97
+            "confidence": 0.97,
+            "distance_hint": "near",
+            "salience": 0.9,
+            "visibility": "full",
+            "image_region": "left"
+          },
+          {
+            "name": "people",
+            "name_cn": "人",
+            "position": "走廊尽头，靠近右侧墙壁",
+            "quantity": 2,
+            "confidence": 0.75,
+            "distance_hint": "far",
+            "salience": 0.3,
+            "visibility": "partial",
+            "image_region": "center"
           },
           {
             "name": "carpet",
             "name_cn": "地毯",
-            "position": "地面",
+            "position": "整个走廊地面",
             "quantity": 1,
-            "confidence": 0.98
+            "confidence": 0.98,
+            "distance_hint": "near",
+            "salience": 0.9,
+            "visibility": "full",
+            "image_region": "center"
           },
           {
-            "name": "light",
-            "name_cn": "灯",
-            "position": "天花板上",
-            "quantity": 6,
-            "confidence": 0.95
-          },
-          {
-            "name": "person",
-            "name_cn": "人",
-            "position": "走廊远端右侧",
-            "quantity": 2,
-            "confidence": 0.85
-          },
-          {
-            "name": "wall_socket",
-            "name_cn": "墙上的插座或装饰物",
-            "position": "右侧墙壁远端",
+            "name": "wall_decor",
+            "name_cn": "墙面装饰",
+            "position": "走廊右侧墙壁，靠近尽头",
             "quantity": 1,
-            "confidence": 0.7
-          },
-          {
-            "name": "hinge",
-            "name_cn": "合页",
-            "position": "门与墙壁的连接处，位于门的右侧边缘",
-            "quantity": 1,
-            "confidence": 0.9
+            "confidence": 0.7,
+            "distance_hint": "far",
+            "salience": 0.25,
+            "visibility": "partial",
+            "image_region": "right"
           }
         ],
-        "description": "这是一张室内走廊的照片，地面铺有灰色地毯，左侧墙边有一个红色的灭火器箱和一个水桶，前方有一扇带有玻璃窗的白色门。 | 一张低角度拍摄的室内走廊照片，显示了灰色地毯、白色踢脚线和一扇带有玻璃窗的门。 | 这是一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，两侧是白色墙壁和几扇门，远处可见几个人影。 | 一张显示走廊角落的图片，包含一扇关闭的白色门、一个合页和底部的踢脚线。",
-        "aliases": [],
-        "semantic_tags": []
+        "semantic_tags": [
+          "corridor",
+          "走廊",
+          "fire_extinguisher_cabinet",
+          "灭火器箱",
+          "door",
+          "门",
+          "baseboard",
+          "踢脚线",
+          "people",
+          "人",
+          "carpet",
+          "地毯",
+          "wall_decor",
+          "墙面装饰"
+        ],
+        "description": "这是一张室内走廊的导航图片，左侧有一个红色的灭火器箱，前方是一扇带有玻璃窗的白色门。 | 一张低角度拍摄的室内走廊照片，地面铺有灰色地毯，右侧有一扇带玻璃窗的门，左侧为白色墙壁和踢脚线。 | 一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，远处可见几个人影和墙面装饰。 | 一张室内走廊的近景照片，显示了一扇关闭的白色门和旁边的踢脚线。"
+      },
+      "search_objects": {
+        "灭火器箱": {
+          "supporting_angles": [
+            0
+          ],
+          "best_view_angle": 0,
+          "best_view_score": 0.9795,
+          "best_confidence": 0.98,
+          "distance_hint": "near",
+          "salience": 0.95,
+          "visibility": "full",
+          "image_region": "left",
+          "name": "fire_extinguisher_cabinet",
+          "name_cn": "灭火器箱"
+        },
+        "门": {
+          "supporting_angles": [
+            0,
+            90,
+            180,
+            270
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.9345,
+          "best_confidence": 0.98,
+          "distance_hint": "near",
+          "salience": 0.95,
+          "visibility": "partial",
+          "image_region": "right",
+          "name": "door",
+          "name_cn": "门"
+        },
+        "踢脚线": {
+          "supporting_angles": [
+            90,
+            270
+          ],
+          "best_view_angle": 90,
+          "best_view_score": 0.963,
+          "best_confidence": 0.97,
+          "distance_hint": "near",
+          "salience": 0.9,
+          "visibility": "full",
+          "image_region": "left",
+          "name": "baseboard",
+          "name_cn": "踢脚线"
+        },
+        "人": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.54,
+          "best_confidence": 0.75,
+          "distance_hint": "far",
+          "salience": 0.3,
+          "visibility": "partial",
+          "image_region": "center",
+          "name": "people",
+          "name_cn": "人"
+        },
+        "地毯": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.967,
+          "best_confidence": 0.98,
+          "distance_hint": "near",
+          "salience": 0.9,
+          "visibility": "full",
+          "image_region": "center",
+          "name": "carpet",
+          "name_cn": "地毯"
+        },
+        "墙面装饰": {
+          "supporting_angles": [
+            180
+          ],
+          "best_view_angle": 180,
+          "best_view_score": 0.5075,
+          "best_confidence": 0.7,
+          "distance_hint": "far",
+          "salience": 0.25,
+          "visibility": "partial",
+          "image_region": "right",
+          "name": "wall_decor",
+          "name_cn": "墙面装饰"
+        }
       },
       "created_time": 1776194915.869121,
-      "last_updated": 1776194915.8691213
+      "last_updated": 1776445738.6889806
     }
   ],
   "edges": [],

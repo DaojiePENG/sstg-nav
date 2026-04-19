@@ -42,7 +42,7 @@ def generate_launch_description():
         parameters=[
             {
                 'api_base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-                'api_key': os.getenv('DASHSCOPE_API_KEY', 'sk-942e8661f10f492280744a26fe7b953b'),
+                'api_key': os.getenv('DASHSCOPE_API_KEY', ''),
                 'vlm_model': 'qwen-vl-plus',
                 'panorama_storage_path': LaunchConfiguration('panorama_storage_path'),
                 'rgb_topic': '/camera/color/image_raw',

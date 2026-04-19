@@ -195,9 +195,14 @@ class MapManagerNode(Node):
             objects = [
                 SemanticObject(
                     name=obj.name,
+                    name_cn=getattr(obj, 'name_cn', ''),
                     position=obj.position,
                     quantity=obj.quantity,
-                    confidence=obj.confidence
+                    confidence=obj.confidence,
+                    distance_hint=getattr(obj, 'distance_hint', 'unknown'),
+                    salience=getattr(obj, 'salience', 0.5),
+                    visibility=getattr(obj, 'visibility', 'unknown'),
+                    image_region=getattr(obj, 'image_region', 'mixed'),
                 )
                 for obj in sem_data.objects
             ]
@@ -225,6 +230,8 @@ class MapManagerNode(Node):
                 node.viewpoints[angle].capture_time = time.time()
                 # Re-aggregate node-level semantic
                 node.aggregate_semantic()
+                # Ensure unique name after aggregation
+                node.name = self.topo_map._unique_name(node.name, node_id)
                 node.last_updated = time.time()
                 response.message = f"Updated viewpoint {angle}° for node {node_id}, aggregated"
             else:

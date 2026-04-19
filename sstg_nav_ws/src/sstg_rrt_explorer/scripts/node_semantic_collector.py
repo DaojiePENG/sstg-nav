@@ -252,7 +252,7 @@ class NodeSemanticCollector(Node):
                 all_results.append({
                     'angle': angle_deg,
                     'room_type': ann_resp.room_type,
-                    'objects': [o.name for o in ann_resp.objects],
+                    'objects': [o.name_cn or o.name for o in ann_resp.objects],
                 })
             else:
                 err = ann_resp.error_message if ann_resp else 'timeout'

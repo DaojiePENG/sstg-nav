@@ -26,6 +26,7 @@ export interface ObjectSearchTrace {
   phase: string;
   eventType: string;
   currentNodeId: number;
+  currentAngleDeg: number;
   candidateNodeIds: number[];
   visitedNodeIds: number[];
   failedNodeIds: number[];
@@ -56,6 +57,7 @@ interface RosState {
   disconnect: () => void;
   startTask: (text: string, context?: string, sessionId?: string, senderName?: string) => Promise<any>;
   cancelTask: () => Promise<boolean>;
+  confirmTask: (taskId: string, confirmed: boolean) => Promise<any>;
   deleteChatSession: (sessionId: string) => Promise<any>;
   launchMode: (mode: string) => Promise<any>;
   getSystemStatus: () => Promise<any>;
@@ -64,6 +66,7 @@ interface RosState {
   executeNavigation: (nodeId: number, x: number, y: number, theta: number) => Promise<any>;
   setInitialPose: (x: number, y: number, yaw: number) => void;
   clearPoseTrail: () => void;
+  clearSearchTrace: () => void;
 }
 
 const MAX_LOGS = 200;
@@ -208,6 +211,7 @@ export const useRosStore = create<RosState>((set, get) => ({
             phase: message.phase || '',
             eventType: message.event_type || '',
             currentNodeId: message.current_node_id ?? -1,
+            currentAngleDeg: message.current_angle_deg ?? -1,
             candidateNodeIds: message.candidate_node_ids || [],
             visitedNodeIds: message.visited_node_ids || [],
             failedNodeIds: message.failed_node_ids || [],
@@ -409,6 +413,25 @@ export const useRosStore = create<RosState>((set, get) => ({
     });
   },
 
+  confirmTask: (taskId: string, confirmed: boolean) => {
+    return new Promise((resolve, reject) => {
+      const { ros, isConnected } = get();
+      if (!ros || !isConnected) return reject("ROS not connected");
+
+      const client = new ROSLIB.Service({
+        ros,
+        name: "/confirm_task",
+        serviceType: "sstg_msgs/srv/ConfirmTask"
+      });
+
+      client.callService(
+        { task_id: taskId, confirmed },
+        (result: any) => resolve(result),
+        (error: any) => reject(error),
+      );
+    });
+  },
+
   launchMode: (mode: string) => {
     return new Promise((resolve, reject) => {
       const { ros, isConnected } = get();
@@ -488,17 +511,32 @@ export const useRosStore = create<RosState>((set, get) => ({
       const { ros, isConnected } = get();
       if (!ros || !isConnected) return reject("ROS not connected");
 
-      const client = new ROSLIB.Service({
-        ros,
-        name: "/nlp/update_llm_config",
-        serviceType: "sstg_msgs/srv/UpdateLLMConfig"
-      });
+      // 同步推送到 nlp + perception，两者任一失败都 reject；全部成功时 resolve
+      const targets = [
+        "/nlp/update_llm_config",
+        "/perception/update_llm_config",
+      ];
+      const payload = { base_url: baseUrl, api_key: apiKey, model };
 
-      client.callService(
-        { base_url: baseUrl, api_key: apiKey, model },
-        (result: any) => resolve(result),
-        (error: any) => reject(error),
-      );
+      Promise.all(
+        targets.map(
+          (name) =>
+            new Promise((res, rej) => {
+              const client = new ROSLIB.Service({
+                ros,
+                name,
+                serviceType: "sstg_msgs/srv/UpdateLLMConfig",
+              });
+              client.callService(
+                payload,
+                (result: any) => res({ name, result }),
+                (error: any) => rej({ name, error }),
+              );
+            }),
+        ),
+      )
+        .then((results) => resolve(results))
+        .catch((err) => reject(err));
     });
   },
 
@@ -574,5 +612,9 @@ export const useRosStore = create<RosState>((set, get) => ({
     if (nav) {
       set({ navigationState: { ...nav, poseTrail: [] } });
     }
+  },
+
+  clearSearchTrace: () => {
+    set({ objectSearchTrace: null });
   },
 }));

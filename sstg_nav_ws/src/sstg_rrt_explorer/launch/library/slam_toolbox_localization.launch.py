@@ -49,22 +49,22 @@ def generate_launch_description():
             # ── 激光参数 ──
             'scan_topic': '/scan',
             'laser_model_type': 'likelihood_field',
-            'max_beams': 60,
+            'max_beams': 90,
             'laser_max_range': 12.0,
             'laser_min_range': 0.1,
             # ── 粒子滤波参数 ──
-            'min_particles': 200,
-            'max_particles': 2000,
+            'min_particles': 500,
+            'max_particles': 3000,
             # ── 运动模型（差速/全向） ──
             'robot_model_type': 'nav2_amcl::OmniMotionModel',
-            'alpha1': 0.2,   # 旋转→旋转噪声
-            'alpha2': 0.2,   # 平移→旋转噪声
-            'alpha3': 0.2,   # 平移→平移噪声
-            'alpha4': 0.2,   # 旋转→平移噪声
-            'alpha5': 0.1,   # 侧向平移噪声（全向）
+            'alpha1': 0.3,   # 旋转→旋转噪声（麦轮旋转打滑较大）
+            'alpha2': 0.3,   # 平移→旋转噪声
+            'alpha3': 0.3,   # 平移→平移噪声
+            'alpha4': 0.3,   # 旋转→平移噪声
+            'alpha5': 0.2,   # 侧向平移噪声（全向）
             # ── 更新阈值 ──
-            'update_min_d': 0.1,    # 移动 0.1m 才更新
-            'update_min_a': 0.2,    # 旋转 0.2rad 才更新
+            'update_min_d': 0.05,   # 移动 0.05m 即更新（更灵敏）
+            'update_min_a': 0.1,    # 旋转 0.1rad 即更新
             'resample_interval': 1,
             # ── 初始位姿（地图原点附近） ──
             'set_initial_pose': True,
@@ -73,9 +73,10 @@ def generate_launch_description():
             'initial_pose.z': 0.0,
             'initial_pose.yaw': 0.0,
             # ── 似然场参数 ──
-            'z_hit': 0.5,
-            'z_rand': 0.5,
-            'sigma_hit': 0.2,
+            'z_hit': 0.7,
+            'z_rand': 0.3,
+            'sigma_hit': 0.1,
+            'laser_likelihood_max_dist': 2.0,
             # ── TF ──
             'tf_broadcast': True,
             'transform_tolerance': 0.5,
