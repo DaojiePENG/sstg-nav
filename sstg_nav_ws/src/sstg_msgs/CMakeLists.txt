@@ -36,9 +36,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/UpdateLLMConfig.srv"
   "srv/DeleteChatSession.srv"
   "srv/RestartNode.srv"
+  "srv/ConfirmTask.srv"
   "msg/SystemStatus.msg"
   "msg/ObjectSearchTrace.msg"
   "msg/ViewpointData.msg"
+  "msg/ChatEvent.msg"
   "action/ExploreHome.action"
   DEPENDENCIES
     builtin_interfaces

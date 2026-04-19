@@ -18,6 +18,12 @@ export interface ImageAttachment {
   alt?: string;
 }
 
+export interface ChatAction {
+  id: string;
+  label: string;
+  style?: 'primary' | 'secondary' | 'danger';
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -33,6 +39,10 @@ export interface ChatMessage {
     error?: string;
     statusText?: string;
     steps?: StatusStep[];
+    actions?: ChatAction[];
+    taskId?: string;
+    actionsDisabled?: boolean;
+    recallTarget?: string;
   };
 }
 
@@ -134,6 +144,7 @@ interface ChatState {
   addMessage: (msg: Pick<ChatMessage, "role" | "content" | "meta">) => Promise<ChatMessage | null>;
   updateLastRobotMessage: (meta: Partial<ChatMessage["meta"]>, newContent?: string) => void;
   finalizeLastRobotMessage: () => void;
+  updateMessageMeta: (messageId: string, metaUpdates: Partial<ChatMessage["meta"]>) => Promise<void>;
   addToLocalQueue: (item: QueueItem) => void;
   removeFromLocalQueue: (taskId: string) => void;
   promoteFromQueue: (taskId: string) => void;
@@ -265,6 +276,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
         break;
       }
+      case "message_removed": {
+        if (event.sessionId === state.activeSessionId) {
+          set({
+            messages: state.messages.filter(m => m.id !== event.messageId),
+          });
+        }
+        break;
+      }
       case "session_created": {
         const exists = state.sessions.some(s => s.id === event.session.id);
         if (!exists) {
@@ -314,6 +333,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
           set({
             activeProvider: event.config.activeProvider,
             providers: event.config.providers,
+          });
+        }
+        break;
+      }
+      case "auto_confirm_request": {
+        // Round 7: memory-recall 已预授权 → 自动 confirmTask(true)，跳过确认气泡
+        if (event.sessionId === state.activeSessionId && event.taskId) {
+          const ros = useRosStore.getState();
+          ros.confirmTask(event.taskId, true).catch((err: any) => {
+            console.error("[chatStore] auto_confirm failed:", err);
           });
         }
         break;
@@ -467,6 +496,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Clear task ownership
     set({ isTaskOwner: false, currentRobotMsgId: null });
+  },
+
+  updateMessageMeta: async (messageId: string, metaUpdates: Partial<ChatMessage["meta"]>) => {
+    const sid = get().activeSessionId;
+    try {
+      await fetch(`/api/chat/messages/${messageId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sid, meta: metaUpdates }),
+      });
+    } catch (err) {
+      console.error("[chatStore] updateMessageMeta failed:", err);
+    }
   },
 
   // ── Local Queue Management ──

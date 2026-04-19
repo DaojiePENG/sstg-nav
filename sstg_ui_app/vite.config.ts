@@ -313,7 +313,10 @@ function mapSessionsPlugin(): Plugin {
 
       // Static file serving for /map-sessions/
       server.middlewares.use('/map-sessions', (req, res, next) => {
-        const filePath = path.join(MAPS_ROOT, decodeURIComponent(req.url || ''));
+        // R8+: 剥掉 ?v=... 查询串，否则会被拼进磁盘路径导致 404
+        const rawUrl = req.url || '';
+        const urlNoQuery = rawUrl.split('?')[0];
+        const filePath = path.join(MAPS_ROOT, decodeURIComponent(urlNoQuery));
         if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
           const ext = path.extname(filePath).toLowerCase();
           const mimeTypes: Record<string, string> = {
@@ -321,6 +324,9 @@ function mapSessionsPlugin(): Plugin {
             '.pgm': 'application/octet-stream', '.yaml': 'text/yaml',
           };
           res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+          // R8: ROS 侧每次搜索都会覆盖 viewpoint 图片到同一路径，浏览器必须每次都重新拉
+          res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
           fs.createReadStream(filePath).pipe(res);
         } else {
           next();

@@ -32,6 +32,7 @@ interface MapState {
   activeMapId: string;
   calibrations: Record<string, MapCalibration>;
   savedCameraState: CameraState | null;
+  showScanOverlay: boolean;
   addMap: (map: MapItem) => void;
   deleteMap: (id: string) => void;
   renameMap: (id: string, newLabel: string) => void;
@@ -39,6 +40,7 @@ interface MapState {
   setActiveMapId: (id: string) => void;
   updateCalibration: (id: string, calib: Partial<MapCalibration>) => void;
   saveCameraState: (cameraState: CameraState) => void;
+  setShowScanOverlay: (show: boolean) => void;
   saveCalibration: () => void;
   /** 从后端自动发现 map sessions */
   discoverSessions: () => Promise<void>;
@@ -73,6 +75,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   activeMapId: persisted?.activeMapId || LEGACY_MAPS[0].id,
   calibrations: persisted?.calibrations || {},
   savedCameraState: persisted?.savedCameraState || null,
+  showScanOverlay: persisted?.showScanOverlay || false,
 
   addMap: (map) => set((s) => {
     const next = { maps: [...s.maps, map], activeMapId: map.id };
@@ -109,6 +112,11 @@ export const useMapStore = create<MapState>((set, get) => ({
   }),
   saveCameraState: (cameraState) => set(() => {
     const next = { savedCameraState: cameraState };
+    localStorage.setItem("sstg-map-store", JSON.stringify({ ...get(), ...next }));
+    return next;
+  }),
+  setShowScanOverlay: (show) => set(() => {
+    const next = { showScanOverlay: show };
     localStorage.setItem("sstg-map-store", JSON.stringify({ ...get(), ...next }));
     return next;
   }),

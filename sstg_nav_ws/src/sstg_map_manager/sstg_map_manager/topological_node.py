@@ -119,6 +119,10 @@ class SemanticObject:
     quantity: int = 1
     confidence: float = 0.0
     name_cn: str = ""
+    distance_hint: str = "unknown"
+    salience: float = 0.5
+    visibility: str = "unknown"
+    image_region: str = "mixed"
 
     def __post_init__(self):
         self.name = (self.name or self.name_cn or '').strip()
@@ -132,6 +136,10 @@ class SemanticObject:
             'position': self.position,
             'quantity': self.quantity,
             'confidence': self.confidence,
+            'distance_hint': self.distance_hint,
+            'salience': self.salience,
+            'visibility': self.visibility,
+            'image_region': self.image_region,
         }
 
     @staticmethod
@@ -142,6 +150,10 @@ class SemanticObject:
             position=data.get('position', ''),
             quantity=data.get('quantity', 1),
             confidence=data.get('confidence', 0.0),
+            distance_hint=data.get('distance_hint', 'unknown'),
+            salience=data.get('salience', 0.5),
+            visibility=data.get('visibility', 'unknown'),
+            image_region=data.get('image_region', 'mixed'),
         )
 
 
@@ -244,6 +256,7 @@ class TopologicalNode:
     viewpoints: Dict[int, Viewpoint] = field(default_factory=dict)  # angle → Viewpoint
     panorama_paths: Dict[str, str] = field(default_factory=dict)  # 保留，向后兼容
     semantic_info: Optional[SemanticInfo] = None  # 保留，聚合缓存
+    search_objects: Dict[str, Dict] = field(default_factory=dict)  # 排序友好聚合字段
     name: str = ""
     created_time: float = 0.0
     last_updated: float = 0.0
@@ -258,50 +271,163 @@ class TopologicalNode:
     def aggregate_semantic(self, strategy: str = 'union') -> None:
         """Aggregate viewpoint-level SemanticInfo into node-level cache.
 
-        Uses voting for room_type, union for objects (keeps highest confidence).
+        R8 "自修正" 语义：每次调用都**全量重建** search_objects（先清空再按当前
+        viewpoints 重建），不做跨次调用的 merge。这样 VLM 新观察会立即反映为
+        节点级证据的权威源，planner/memory-recall 都读这份。
         """
+        # 无论是否有 viewpoint，都先清空（"自修正"：上次写过的条目不能在本次残留）
+        self.search_objects = {}
+
         infos = [
             vp.semantic_info for vp in self.viewpoints.values()
             if vp.semantic_info is not None
         ]
         if not infos:
             return
+
+        # Room type / 描述 / 聚合语义信息
         if len(infos) == 1:
             self.semantic_info = infos[0]
-            return
+            room_type_cn = infos[0].room_type_cn
+        else:
+            # Room type: majority vote
+            room_types = [info.room_type for info in infos]
+            room_type = max(set(room_types), key=room_types.count)
 
-        # Room type: majority vote
-        room_types = [info.room_type for info in infos]
-        room_type = max(set(room_types), key=room_types.count)
+            # Room type CN: pick from winner
+            room_type_cn = ''
+            for info in infos:
+                if info.room_type == room_type and info.room_type_cn:
+                    room_type_cn = info.room_type_cn
+                    break
 
-        # Room type CN: pick from winner
-        room_type_cn = ''
+            # Confidence: average
+            avg_confidence = sum(info.confidence for info in infos) / len(infos)
+
+            # Objects: union with highest confidence per object
+            obj_dict: Dict[str, 'SemanticObject'] = {}
+            for info in infos:
+                for obj in info.objects:
+                    key = (obj.name or obj.name_cn or '').lower()
+                    if key and (key not in obj_dict or obj.confidence > obj_dict[key].confidence):
+                        obj_dict[key] = obj
+
+            # Description: join non-empty
+            descriptions = [info.description for info in infos if info.description]
+            description = ' | '.join(descriptions)
+
+            self.semantic_info = SemanticInfo(
+                room_type=room_type,
+                room_type_cn=room_type_cn,
+                confidence=avg_confidence,
+                objects=list(obj_dict.values()),
+                description=description,
+            )
+
+        # search_objects 全量重建（无论 1 还是 N 个 viewpoint）
+        obj_angles: Dict[str, List[int]] = {}
+        best_view_angle: Dict[str, int] = {}
+        best_view_score: Dict[str, float] = {}
+        best_meta: Dict[str, 'SemanticObject'] = {}
+        best_confidence: Dict[str, float] = {}
+        for angle, vp in self.viewpoints.items():
+            info = vp.semantic_info
+            if not info:
+                continue
+            for obj in info.objects:
+                key = (obj.name_cn or obj.name or '').lower()
+                if not key:
+                    continue
+                obj_angles.setdefault(key, [])
+                if angle not in obj_angles[key]:
+                    obj_angles[key].append(angle)
+                # best_confidence: max across all viewpoints (R8: 让 planner 按此过滤)
+                if key not in best_confidence or obj.confidence > best_confidence[key]:
+                    best_confidence[key] = obj.confidence
+                # best_view_* 仍用综合分挑最佳展示视角
+                score = self._object_view_score(obj)
+                if key not in best_view_score or score > best_view_score[key]:
+                    best_view_score[key] = score
+                    best_view_angle[key] = angle
+                    best_meta[key] = obj
+
+        for key, obj in best_meta.items():
+            self.search_objects[key] = {
+                'supporting_angles': sorted(obj_angles.get(key, [])),
+                'best_view_angle': best_view_angle.get(key, -1),
+                'best_view_score': round(best_view_score.get(key, 0.0), 4),
+                'best_confidence': best_confidence.get(key, obj.confidence),
+                'distance_hint': obj.distance_hint,
+                'salience': obj.salience,
+                'visibility': obj.visibility,
+                'image_region': obj.image_region,
+                'name': obj.name,
+                'name_cn': obj.name_cn,
+            }
+
+        if len(infos) > 1:
+            # 生成辨识度更高的节点名: 合并不同 room_type + 特征物体
+            self._generate_distinctive_name(infos, room_type_cn)
+
+    # 通用/低辨识度物体，不适合作为节点特征标签
+    _GENERIC_OBJECTS = frozenset({
+        '地板', '天花板', '墙壁', '天花板灯', '灯', '门', '地毯',
+        '踢脚线', '窗户', '玻璃墙', '隔断墙', '走廊', '过道',
+        'floor', 'ceiling', 'wall', 'door', 'carpet', 'window',
+    })
+
+    def _generate_distinctive_name(self, infos: list, room_type_cn: str) -> None:
+        """Generate a distinctive node name from room types + landmark objects."""
+        # 收集所有不同的 room_type_cn
+        unique_rooms = []
+        seen = set()
         for info in infos:
-            if info.room_type == room_type and info.room_type_cn:
-                room_type_cn = info.room_type_cn
-                break
+            r = info.room_type_cn
+            if r and r not in seen:
+                seen.add(r)
+                unique_rooms.append(r)
 
-        # Confidence: average
-        avg_confidence = sum(info.confidence for info in infos) / len(infos)
-
-        # Objects: union with highest confidence per object
-        obj_dict: Dict[str, 'SemanticObject'] = {}
+        # 找最具辨识度的物体 (高置信度 + 非通用)
+        landmark = ''
+        best_conf = 0.0
         for info in infos:
             for obj in info.objects:
-                key = (obj.name or obj.name_cn or '').lower()
-                if key and (key not in obj_dict or obj.confidence > obj_dict[key].confidence):
-                    obj_dict[key] = obj
+                cn = (obj.name_cn or '').strip()
+                if not cn or cn in self._GENERIC_OBJECTS:
+                    continue
+                if obj.confidence > best_conf:
+                    best_conf = obj.confidence
+                    landmark = cn
 
-        # Description: join non-empty
-        descriptions = [info.description for info in infos if info.description]
-        description = ' | '.join(descriptions)
+        # 组合名字
+        if len(unique_rooms) > 1:
+            base = '/'.join(unique_rooms[:2])
+        else:
+            base = room_type_cn or '未知区域'
 
-        self.semantic_info = SemanticInfo(
-            room_type=room_type,
-            room_type_cn=room_type_cn,
-            confidence=avg_confidence,
-            objects=list(obj_dict.values()),
-            description=description,
+        if landmark and best_conf >= 0.85:
+            self.name = f"{base}-{landmark}旁"
+        else:
+            self.name = base
+
+    @staticmethod
+    def _object_view_score(obj: 'SemanticObject') -> float:
+        distance_score = {
+            'near': 1.0,
+            'mid': 0.65,
+            'far': 0.3,
+        }.get((obj.distance_hint or 'unknown').lower(), 0.55)
+        visibility_score = {
+            'full': 1.0,
+            'partial': 0.7,
+            'occluded': 0.35,
+        }.get((obj.visibility or 'unknown').lower(), 0.55)
+        return round(
+            0.40 * obj.confidence +
+            0.25 * obj.salience +
+            0.20 * distance_score +
+            0.15 * visibility_score,
+            4,
         )
 
     def to_dict(self):
@@ -320,6 +446,7 @@ class TopologicalNode:
             },
             'panorama_paths': self.panorama_paths,
             'semantic_info': self.semantic_info.to_dict() if self.semantic_info else None,
+            'search_objects': self.search_objects,
             'created_time': self.created_time,
             'last_updated': self.last_updated,
         }
@@ -358,6 +485,7 @@ class TopologicalNode:
             viewpoints=viewpoints,
             panorama_paths=data.get('panorama_paths', {}),
             semantic_info=semantic_info,
+            search_objects=data.get('search_objects', {}),
             name=data.get('name', ''),
             created_time=data.get('created_time', 0.0),
             last_updated=data.get('last_updated', 0.0),

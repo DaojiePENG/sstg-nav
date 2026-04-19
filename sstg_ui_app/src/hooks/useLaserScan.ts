@@ -37,7 +37,7 @@ export function useLaserScan(enabled: boolean) {
       ros,
       name: "/scan",
       messageType: "sensor_msgs/msg/LaserScan",
-      throttle_rate: 80, // ~12fps
+      throttle_rate: 120, // ~8fps, balance between smoothness and performance
     } as any);
 
     topic.subscribe((msg: any) => {
