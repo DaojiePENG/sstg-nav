@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { BookOpen, Network } from "lucide-react";
+import { BookOpen, Network, Puzzle } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const TABS = [
-  { key: "core", label: "Core Hub", icon: Network, src: "/interaction-core-embed.html", accent: true },
-  { key: "ui", label: "UI 架构", icon: BookOpen, src: "/architecture-embed.html", accent: false },
+  { key: "core",      label: "Core Hub", icon: Network, src: "/interaction-core-embed.html", accent: true },
+  { key: "ui",        label: "UI 架构",  icon: BookOpen, src: "/architecture-embed.html",    accent: false },
+  { key: "migration", label: "移植方案", icon: Puzzle,   src: "/migration-embed.html",        accent: false },
 ] as const;
 
 export default function ArchitectureView() {
@@ -18,14 +19,18 @@ export default function ArchitectureView() {
         <div className="flex items-center gap-4">
           <div className={cn(
             "w-10 h-10 rounded-2xl flex items-center justify-center transition-colors",
-            tab === "core" ? "bg-orange-500/20 text-orange-400" : "bg-indigo-600/20 text-indigo-400"
+            tab === "core" ? "bg-orange-500/20 text-orange-400" :
+            tab === "migration" ? "bg-emerald-500/20 text-emerald-400" :
+            "bg-indigo-600/20 text-indigo-400"
           )}>
-            {tab === "core" ? <Network size={24} /> : <BookOpen size={24} />}
+            {tab === "core" ? <Network size={24} /> : tab === "migration" ? <Puzzle size={24} /> : <BookOpen size={24} />}
           </div>
           <div>
             <h1 className="text-lg font-bold text-slate-100 tracking-wide">系统架构</h1>
             <p className="text-[11px] text-slate-500">
-              {tab === "core" ? "Interaction Manager — 编排核心 / 任务链路 / 状态机" : "UI 模块 / 数据流 / 后端接口 / 3.x 对接"}
+              {tab === "core" ? "Interaction Manager — 编排核心 / 任务链路 / 状态机" :
+               tab === "migration" ? "适配任意 ROS2 机器人 — 移植说明 / 适配文件 / 验收清单" :
+               "UI 模块 / 数据流 / 后端接口 / V3 对接"}
             </p>
           </div>
         </div>
