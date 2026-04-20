@@ -151,6 +151,7 @@ https://iadc.sstgnav.cc.cd
 | "去客厅" | 语义导航到客厅 | 导航 |
 | "帮我探索这个新家" | 启动 RRT 自主探索建图 | 探索 |
 | "帮我找书包" | 多节点搜索 + VLM 视觉确认 | 导航 |
+| "我的书包" | 导航模式下触发记忆召回，显示历史图片 + [去看看]/[不用了] 按钮 | 导航 |
 | "去有红色沙发的地方" | 基于物体描述的导航 | 导航 |
 | "看看前面有什么" | 拍照 + VLM 描述当前场景 | 导航/探索 |
 | "停下" / "算了" / "别走了" | 取消当前任务（前端关键词秒取消） | 导航/探索 |
@@ -163,6 +164,7 @@ https://iadc.sstgnav.cc.cd
   - ✅ 已完成步骤灰色
   - ❌ 失败步骤红色
 - 纯对话（conversation 意图）只有正文，无轨迹
+- 找物体任务：每个节点显示两条消息——ROS 硬数据（节点/角度/置信度）+ LLM 润色版（自然语言描述）
 
 ### 3.3 语音输入
 
@@ -308,6 +310,8 @@ PGM 地图文件 → Canvas 解析
 - 右侧面板显示节点 ID、房间类型（中文）
 - 四方向全景图缩略图（点击可放大浏览）
 - 语义标签和置信度
+- 搜索过的节点会显示彩色状态（命中/未命中/跳过）
+- 搜索完成后图片自动刷新为最新拍摄的全景图
 
 ### 5.6 从地图发起导航
 
@@ -502,7 +506,7 @@ systemctl --user restart sstg-tunnel
 
 ---
 
-文档版本: 2026-04-11 v2.0 | 适用于 SSTG 2.8 (Phase 13)
+文档版本: 2026-04-20 v3.0 | 适用于 SSTG V3
 
 ---
 
@@ -527,7 +531,7 @@ systemctl --user restart sstg-tunnel
 |------|---------|---------|
 | `conversation` | "你好" / "这里有什么" | **流式 HTTP SSE**（Vite 直连 LLM，逐 token 推送） |
 | `navigate_to` | "去客厅" / "去有沙发的地方" | ROS Service `/start_task` |
-| `locate_object` | "帮我找书包" | ROS（精确匹配 → 全局搜索所有节点逐个拍照） |
+| `locate_object` | "帮我找书包" | ROS（记忆召回确认 → 候选节点搜索 → 并行 VLM 检查 → 距离感知裁决 → 双消息反馈） |
 | `explore_new_home` | "探索这个新家" | ROS（启动 RRT 前沿探索） |
 | `describe_scene` | "看看前面有什么" / "拍张照" | ROS（拍照 + VLM 分析） |
 | `stop_task` | "停下" / "取消" / "别走了" | 前端关键词秒取消 + 后端 VLM 兜底 |
@@ -557,6 +561,10 @@ UI (roslibjs via rosbridge ws://localhost:9090)
 │
 └── Phase 6 新增:
     └── CALLS: /nlp/delete_session
+└── V3 新增:
+    ├── CALLS: /confirm_task
+    ├── SUBSCRIBES: /object_search_trace
+    └── HTTP: POST /api/chat/ros-event (ROS→chatSyncPlugin)
 ```
 
 ---
@@ -581,3 +589,8 @@ UI (roslibjs via rosbridge ws://localhost:9090)
 | `POST` | `/api/system/stop-backend` | 优雅停止后端 |
 | `GET` | `/api/system/backend-status` | 后端进程状态 |
 | `POST` | `/api/system/force-cleanup` | 强制清杀所有 ROS2 残留进程 |
+| `POST` | `/api/chat/ros-event` | 接收 ROS ChatEvent（搜索过程消息桥接）|
+| `POST` | `/api/chat/memory-recall` | navigate 模式物品词触发记忆召回 |
+| `POST` | `/api/chat/auto-confirm/arm` | 预授权下一次搜索确认自动接纳 |
+| `GET` | `/api/topo/vocab` | 获取已知物品词表（5s 缓存）|
+| `POST` | `/api/chat/ros-task/abandon` | 取消搜索任务（任务隔离）|

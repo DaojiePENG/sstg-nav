@@ -213,40 +213,44 @@
           <text class="node-sub" x="16" y="50">路由 / 认证门禁 / 电源按钮 / 自动连接</text>
         </g>
         <g class="node" data-id="chatview" transform="translate(50,176)">
-          <rect width="290" height="88" fill="rgba(59,130,246,0.12)" />
-          <text class="node-title" x="16" y="28">ChatView.tsx (1544 行)</text>
+          <rect width="290" height="104" fill="rgba(59,130,246,0.12)" />
+          <text class="node-title" x="16" y="28">ChatView.tsx (1679 行)</text>
           <text class="node-sub" x="16" y="48">三模式切换: chat / navigate / explore</text>
           <text class="node-sub" x="16" y="66">LLM 流式 + 图片上传 + 任务队列 + 语音</text>
+          <text class="node-sub" x="16" y="84">V3: memory-recall 拦截 + auto-confirm arm</text>
         </g>
-        <g class="node" data-id="mapview" transform="translate(50,288)">
-          <rect width="290" height="88" fill="rgba(59,130,246,0.12)" />
-          <text class="node-title" x="16" y="28">MapView.tsx (707 行)</text>
+        <g class="node" data-id="mapview" transform="translate(50,304)">
+          <rect width="290" height="104" fill="rgba(59,130,246,0.12)" />
+          <text class="node-title" x="16" y="28">MapView.tsx (1365 行)</text>
           <text class="node-sub" x="16" y="48">Three.js 3D 全息地图 + 拓扑节点</text>
           <text class="node-sub" x="16" y="66">机器人位姿 + 实时地图 + 全景画廊</text>
+          <text class="node-sub" x="16" y="84">V3: 节点染色 + semantic_update_done 刷新</text>
         </g>
-        <g class="node" data-id="robotview" transform="translate(50,400)">
+        <g class="node" data-id="robotview" transform="translate(50,432)">
           <rect width="290" height="72" fill="rgba(59,130,246,0.12)" />
           <text class="node-title" x="16" y="28">RobotView.tsx (337 行)</text>
           <text class="node-sub" x="16" y="50">模式切换 / 硬件状态 / CPU/RAM / 日志</text>
         </g>
 
         <!-- Zustand Stores -->
-        <g class="node" data-id="rosstore" transform="translate(50,510)">
-          <rect width="290" height="72" fill="rgba(139,92,246,0.12)" />
-          <text class="node-title" x="16" y="28">rosStore.ts (367 行)</text>
-          <text class="node-sub" x="16" y="50">ROS 连接 + 5 Topics 订阅 + 7 Services</text>
+        <g class="node" data-id="rosstore" transform="translate(50,528)">
+          <rect width="290" height="88" fill="rgba(139,92,246,0.12)" />
+          <text class="node-title" x="16" y="28">rosStore.ts</text>
+          <text class="node-sub" x="16" y="48">ROS 连接 + 6 Topics 订阅 + 8 Services</text>
+          <text class="node-sub" x="16" y="66">V3: +objectSearchTrace +confirmTask</text>
         </g>
-        <g class="node" data-id="chatstore" transform="translate(50,606)">
-          <rect width="290" height="72" fill="rgba(139,92,246,0.12)" />
-          <text class="node-title" x="16" y="28">chatStore.ts (537 行)</text>
-          <text class="node-sub" x="16" y="50">会话/消息/LLM 配置 + SSE 同步</text>
+        <g class="node" data-id="chatstore" transform="translate(50,636)">
+          <rect width="290" height="88" fill="rgba(139,92,246,0.12)" />
+          <text class="node-title" x="16" y="28">chatStore.ts</text>
+          <text class="node-sub" x="16" y="48">会话/消息/LLM 配置 + SSE 同步</text>
+          <text class="node-sub" x="16" y="66">V3: +message_removed +auto_confirm_request</text>
         </g>
-        <g class="node" data-id="mapstore" transform="translate(50,702)">
+        <g class="node" data-id="mapstore" transform="translate(50,740)">
           <rect width="290" height="72" fill="rgba(139,92,246,0.12)" />
           <text class="node-title" x="16" y="28">mapStore.ts (123 行)</text>
           <text class="node-sub" x="16" y="50">多地图管理 + 校准 + localStorage</text>
         </g>
-        <g class="node" data-id="hooks" transform="translate(50,798)">
+        <g class="node" data-id="hooks" transform="translate(50,836)">
           <rect width="290" height="56" fill="rgba(139,92,246,0.12)" />
           <text class="node-title" x="16" y="24">useVoiceInput + pgm3DParser</text>
           <text class="node-sub" x="16" y="42">语音识别 Hook + PGM-3D 转换</text>
@@ -254,35 +258,37 @@
 
         <!-- Vite Server Plugins -->
         <g class="node" data-id="chatsync" transform="translate(420,80)">
-          <rect width="260" height="220" fill="rgba(16,185,129,0.12)" />
+          <rect width="260" height="256" fill="rgba(16,185,129,0.12)" />
           <text class="node-title" x="16" y="28">chatSyncPlugin</text>
-          <text class="node-title" x="16" y="48">(1493 行 — 核心)</text>
+          <text class="node-title" x="16" y="48">(2226 行 — 核心)</text>
           <text class="node-sub" x="16" y="74">REST API: 会话 CRUD + 消息</text>
           <text class="node-sub" x="16" y="92">SSE 实时广播 (多端同步)</text>
           <text class="node-sub" x="16" y="110">LLM 流式代理 (OpenAI 兼容)</text>
           <text class="node-sub" x="16" y="128">图片检索 (拓扑语义搜索)</text>
-          <text class="node-sub" x="16" y="146">图片标注 (VLM + Sharp)</text>
-          <text class="node-sub" x="16" y="164">多模态适配 (Gemini/Qwen-VL)</text>
-          <text class="node-sub" x="16" y="182">LLM 配置管理 (服务端持久化)</text>
-          <text class="node-sub" x="16" y="200">JSON 文件持久化 ~/sstg-data/</text>
+          <text class="node-sub" x="16" y="146">LLM 配置管理 (服务端持久化)</text>
+          <text class="node-sub" x="16" y="164">V3: POST /api/chat/ros-event</text>
+          <text class="node-sub" x="16" y="182">V3: memory-recall + auto-confirm</text>
+          <text class="node-sub" x="16" y="200">V3: GET /api/topo/vocab (5s TTL)</text>
+          <text class="node-sub" x="16" y="218">V3: LLM polish 双消息机制</text>
+          <text class="node-sub" x="16" y="236">V3: 任务隔离 activeTaskBySession</text>
         </g>
-        <g class="node" data-id="llmproxy" transform="translate(420,324)">
+        <g class="node" data-id="llmproxy" transform="translate(420,348)">
           <rect width="260" height="64" fill="rgba(16,185,129,0.12)" />
           <text class="node-title" x="16" y="26">llmProxyPlugin</text>
           <text class="node-sub" x="16" y="46">LLM API CORS 代理 (诊断用)</text>
         </g>
-        <g class="node" data-id="launcher" transform="translate(420,412)">
+        <g class="node" data-id="launcher" transform="translate(420,436)">
           <rect width="260" height="88" fill="rgba(16,185,129,0.12)" />
           <text class="node-title" x="16" y="26">backendLauncherPlugin</text>
           <text class="node-sub" x="16" y="46">ROS2 后端进程管理</text>
           <text class="node-sub" x="16" y="64">三层防护: 优雅关闭 / 清理残留 / 强杀</text>
         </g>
-        <g class="node" data-id="static" transform="translate(420,524)">
+        <g class="node" data-id="static" transform="translate(420,548)">
           <rect width="260" height="64" fill="rgba(16,185,129,0.12)" />
           <text class="node-title" x="16" y="26">Vite Static Server</text>
           <text class="node-sub" x="16" y="46">public/ 地图 + 全景图 + PWA</text>
         </g>
-        <g class="node" data-id="datadir" transform="translate(420,612)">
+        <g class="node" data-id="datadir" transform="translate(420,636)">
           <rect width="260" height="80" fill="rgba(234,179,8,0.12)" />
           <text class="node-title" x="16" y="26">~/sstg-data/chat/</text>
           <text class="node-sub" x="16" y="46">index.json — 会话索引</text>
@@ -354,7 +360,7 @@
       </svg>
 
       <!-- SCENE 2: Data Flow + Interfaces -->
-      <svg id="scene-dataflow" class="state-hidden" viewBox="0 0 1100 900" xmlns="http://www.w3.org/2000/svg">
+      <svg id="scene-dataflow" class="state-hidden" viewBox="0 0 1100 960" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <marker id="a-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
             <path d="M0 0L10 5L0 10z" fill="#3b82f6" />
@@ -462,6 +468,14 @@
         <text class="node-title" x="746" y="854" style="font-size:12px">/system/launch_mode + /cancel_task</text>
         <path class="edge" d="M270 730 C 300 730, 690 852, 730 852" stroke="#3b82f6" marker-end="url(#a-blue)" opacity="0.5" />
 
+        <!-- V3: object_search_trace -->
+        <rect rx="14" x="30" y="890" width="240" height="44" fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.3)" />
+        <text class="node-title" x="46" y="916" style="font-size:13px;fill:#93c5fd">MapView (搜索追踪 V3)</text>
+        <rect rx="14" x="730" y="890" width="340" height="44" fill="rgba(249,115,22,0.18)" stroke="rgba(249,115,22,0.4)" />
+        <text class="node-title" x="746" y="914" style="font-size:12px;fill:#fdba74">/object_search_trace (ObjectSearchTrace)</text>
+        <path class="edge" d="M730 912 H 270" stroke="#f97316" marker-end="url(#a-orange)" />
+        <path class="edge-anim" d="M730 912 H 270" stroke="#f97316" />
+
         <!-- Labels -->
         <rect rx="10" x="320" y="478" width="100" height="24" fill="rgba(30,41,59,0.9)" stroke="var(--line)" />
         <text x="340" y="494" style="font-size:11px;font-weight:800;fill:var(--muted)">HTTP / SSE</text>
@@ -480,8 +494,8 @@
           </marker>
         </defs>
 
-        <text class="group-label" x="40" y="36" style="font-size:15px">UI 已具备 (2.x)</text>
-        <text class="group-label" x="600" y="36" style="font-size:15px">3.x 后端需要增强</text>
+        <text class="group-label" x="40" y="36" style="font-size:15px">UI 已具备 (V2+V3)</text>
+        <text class="group-label" x="600" y="36" style="font-size:15px">V3 新增能力（已落地）</text>
         <line x1="540" y1="20" x2="540" y2="880" stroke="var(--line)" stroke-dasharray="6 5" />
 
         <!-- 2.x Ready -->
@@ -526,34 +540,34 @@
           <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#6ee7b7">图片上传 (压缩 + base64 + 多模态 VLM) + 语音输入</text>
         </g>
 
-        <!-- 3.x Needs -->
-        <g class="node" data-id="need-explore" transform="translate(570,56)">
-          <rect width="490" height="100" fill="rgba(249,115,22,0.12)" />
-          <text class="node-title" x="16" y="26">探索功能对接</text>
-          <text class="node-sub" x="16" y="46">UI 已有: explore 模式 + LiveMapLayer + /map 订阅</text>
-          <text class="node-sub" x="16" y="64">需要: /task_status 中填充 exploring 状态 + frontier_count</text>
-          <text class="node-sub" x="16" y="82">需要: 新节点发现通知 (拓扑增量 Topic 或 GetTopologicalMap)</text>
+        <!-- V3 Done -->
+        <g class="node" data-id="v3-search" transform="translate(570,56)">
+          <rect width="490" height="100" fill="rgba(16,185,129,0.12)" />
+          <text class="node-title" x="16" y="26" style="fill:#6ee7b7">✅ 搜索闭环（locate_object 全流程）</text>
+          <text class="node-sub" x="16" y="46">记忆召回 → AWAITING_CONFIRMATION → 并行 VLM check</text>
+          <text class="node-sub" x="16" y="64">距离感知裁决 (near/mid/far) → hard_hit 早退 / best_guess 兜底</text>
+          <text class="node-sub" x="16" y="82">ChatEvent HTTP 桥接 → 双消息（硬数据 + LLM 润色）</text>
         </g>
 
-        <g class="node" data-id="need-path" transform="translate(570,176)">
-          <rect width="490" height="86" fill="rgba(249,115,22,0.12)" />
-          <text class="node-title" x="16" y="26">导航路径可视化</text>
-          <text class="node-sub" x="16" y="46">UI 已有: MapView 拓扑边连线 + 机器人位姿追踪</text>
-          <text class="node-sub" x="16" y="64">需要: 导航路径点序列 Topic + distance/time 真实值</text>
+        <g class="node" data-id="v3-map" transform="translate(570,176)">
+          <rect width="490" height="86" fill="rgba(16,185,129,0.12)" />
+          <text class="node-title" x="16" y="26" style="fill:#6ee7b7">✅ 自修正地图（Round 8）</text>
+          <text class="node-sub" x="16" y="46">搜索命中节点 → _copy_viewpoint_image 覆盖 map session</text>
+          <text class="node-sub" x="16" y="64">aggregate_semantic 全量重建 + semantic_update_done → UI 刷新</text>
         </g>
 
-        <g class="node" data-id="need-topo" transform="translate(570,282)">
-          <rect width="490" height="86" fill="rgba(249,115,22,0.12)" />
-          <text class="node-title" x="16" y="26">拓扑地图动态更新</text>
-          <text class="node-sub" x="16" y="46">当前: 静态 public/maps/topological_map_manual.json</text>
-          <text class="node-sub" x="16" y="64">需要: GetTopologicalMap service + 拓扑变更 Topic</text>
+        <g class="node" data-id="v3-topo" transform="translate(570,282)">
+          <rect width="490" height="86" fill="rgba(16,185,129,0.12)" />
+          <text class="node-title" x="16" y="26" style="fill:#6ee7b7">✅ 拓扑动态刷新（双 cache-buster）</text>
+          <text class="node-sub" x="16" y="46">?v=capture_time&amp;t=topoNonce + &lt;img key&gt; 强制 remount</text>
+          <text class="node-sub" x="16" y="64">mapSessionsPlugin 剥 query + no-cache 头；selectedNode 派生避免 stale</text>
         </g>
 
-        <g class="node" data-id="need-search" transform="translate(570,388)">
-          <rect width="490" height="86" fill="rgba(249,115,22,0.12)" />
-          <text class="node-title" x="16" y="26">物体检索增强</text>
-          <text class="node-sub" x="16" y="46">当前: chatSyncPlugin 前端字符串匹配</text>
-          <text class="node-sub" x="16" y="64">可选: CheckObjectPresence service (VLM 确认) + 语义向量搜索</text>
+        <g class="node" data-id="v3-recall" transform="translate(570,388)">
+          <rect width="490" height="86" fill="rgba(16,185,129,0.12)" />
+          <text class="node-title" x="16" y="26" style="fill:#6ee7b7">✅ Memory Recall + Auto-Confirm</text>
+          <text class="node-sub" x="16" y="46">navigate 模式物品词 → /api/chat/memory-recall → 历史图 + 按钮</text>
+          <text class="node-sub" x="16" y="64">/api/chat/auto-confirm/arm → SSE auto_confirm_request → 自动确认</text>
         </g>
 
         <!-- Handoff Points -->
@@ -582,11 +596,11 @@
         </g>
         <g transform="translate(590,766)">
           <rect rx="10" width="450" height="32" fill="rgba(239,68,68,0.15)" stroke="var(--line)" />
-          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#fca5a5">拓扑数据: 静态 JSON + chatSyncPlugin - GetTopologicalMap (待对接)</text>
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#fca5a5">拓扑数据: MapView - /map-sessions/ + semantic_update_done 事件刷新</text>
         </g>
         <g transform="translate(590,808)">
-          <rect rx="10" width="450" height="32" fill="rgba(59,130,246,0.12)" stroke="var(--line)" />
-          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#93c5fd">聊天持久化: chatSyncPlugin (Vite 侧) + nlp_node (可选 ROS 侧)</text>
+          <rect rx="10" width="450" height="32" fill="rgba(16,185,129,0.15)" stroke="var(--line)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#6ee7b7">V3 搜索: /confirm_task srv + /object_search_trace topic</text>
         </g>
 
         <!-- Arrows -->
@@ -595,6 +609,7 @@
         <path class="edge" d="M510 265 H 570" stroke="#f97316" marker-end="url(#a2-orange)" />
         <path class="edge" d="M510 106 H 570" stroke="#f97316" marker-end="url(#a2-orange)" />
       </svg>
+
     </div>
 
     <!-- Right Panel -->
@@ -622,6 +637,12 @@
           <tr><td><span class="method m-get">GET</span></td><td><code>/api/topo/search</code></td><td>拓扑图片搜索</td></tr>
           <tr><td><span class="method m-post">POST</span></td><td><code>/api/system/start</code></td><td>启动 ROS2 后端</td></tr>
           <tr><td><span class="method m-post">POST</span></td><td><code>/api/system/stop</code></td><td>停止 ROS2 后端</td></tr>
+          <tr><td colspan="3" style="padding:6px 7px;color:#6ee7b7;font-weight:700;font-size:10px;background:rgba(16,185,129,0.08)">V3 新增</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/chat/ros-event</code></td><td>接收 ROS ChatEvent（搜索消息桥接）</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/chat/memory-recall</code></td><td>navigate 模式物品词触发记忆召回</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/chat/auto-confirm/arm</code></td><td>预授权下一次搜索确认自动接纳</td></tr>
+          <tr><td><span class="method m-get">GET</span></td><td><code>/api/topo/vocab</code></td><td>已知物品词表（5s TTL 缓存）</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/chat/ros-task/abandon</code></td><td>取消搜索任务（任务隔离）</td></tr>
         </table>
       </div>
 
@@ -640,6 +661,10 @@
           <tr><td><span class="method m-srv">SRV</span></td><td><code>/system/get_status</code></td><td>GetSystemStatus</td></tr>
           <tr><td><span class="method m-srv">SRV</span></td><td><code>/nlp/update_llm_config</code></td><td>UpdateLLMConfig</td></tr>
           <tr><td><span class="method m-srv">SRV</span></td><td><code>/nlp/delete_session</code></td><td>DeleteChatSession</td></tr>
+          <tr><td colspan="3" style="padding:6px 7px;color:#6ee7b7;font-weight:700;font-size:10px;background:rgba(16,185,129,0.08)">V3 新增</td></tr>
+          <tr><td><span class="method m-sub">SUB</span></td><td><code>/object_search_trace</code></td><td>ObjectSearchTrace</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/confirm_task</code></td><td>ConfirmTask</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/perception/update_llm_config</code></td><td>UpdateLLMConfig</td></tr>
         </table>
       </div>
 
@@ -689,15 +714,15 @@ const nodeData = {
   },
   chatview: {
     title: 'ChatView.tsx \u2014 \u591a\u6a21\u6001\u804a\u5929',
-    desc: '\u6700\u590d\u6742\u7684\u7ec4\u4ef6 (1544 \u884c)\u3002\u4e09\u79cd\u6a21\u5f0f: chat (\u6d41\u5f0f SSE) / navigate (ROS) / explore (ROS)\u3002LLM \u6d41\u5f0f\u6e32\u67d3\u7528 rAF \u6279\u91cf\u5237\u65b0\u3002\u652f\u6301\u56fe\u7247\u4e0a\u4f20 (\u538b\u7f29\u2192base64\u2192\u591a\u6a21\u6001 VLM)\u3001\u8bed\u97f3\u8f93\u5165 (Web Speech API)\u3001\u4efb\u52a1\u961f\u5217 (\u6392\u961f\u2192\u5f39\u5165)\u3001LLM Provider \u8bbe\u7f6e+\u8bca\u65ad\u3002',
-    file: 'src/components/ChatView.tsx (1544 \u884c)',
-    tags: [['\u524d\u7aef\u7ec4\u4ef6', 'tag-blue'], ['\u6838\u5fc3', 'tag-red']],
+    desc: 'V3: 1679 \u884c\u3002\u4e09\u79cd\u6a21\u5f0f: chat / navigate / explore\u3002navigate \u6a21\u5f0f\u4e0b\u7269\u54c1\u8bcd\u62e6\u622a\u2192 memory-recall \u6c14\u6ce1+\u5386\u53f2\u56fe+[\u53bb\u770b\u770b]/[\u4e0d\u7528\u4e86]\u3002\u70b9\u201c\u53bb\u770b\u770b\u201d\u2192 auto-confirm arm \u2192 startTask \u2192 SSE auto_confirm_request \u81ea\u52a8\u786e\u8ba4\u3002\u641c\u7d22\u8fc7\u7a0b\u53cc\u6d88\u606f: ROS \u786c\u6570\u636e + LLM \u6da6\u8272\u3002',
+    file: 'src/components/ChatView.tsx (1679 \u884c)',
+    tags: [['\u524d\u7aef\u7ec4\u4ef6', 'tag-blue'], ['\u6838\u5fc3', 'tag-red'], ['V3', 'tag-green']],
   },
   mapview: {
     title: 'MapView.tsx \u2014 3D \u5168\u606f\u5730\u56fe',
-    desc: 'Three.js + React Three Fiber \u6e32\u67d3\u3002PGM\u21922.5D \u6324\u51fa\u7f51\u683c (displacementMap)\u3002\u62d3\u6251\u8282\u70b9: \u83f1\u5f62\u6676\u4f53+HTML \u6807\u7b7e\u3002\u673a\u5668\u4eba\u5b9e\u65f6\u4f4d\u59ff: \u7eff\u8272\u951f\u4f53\u7bad\u5934\u3002\u5b9e\u65f6 OccupancyGrid \u53e0\u52a0 (SLAM/\u63a2\u7d22)\u3002\u8282\u70b9\u8be6\u60c5: \u8bed\u4e49\u4fe1\u606f+\u7f6e\u4fe1\u5ea6+360\u00b0 \u5168\u666f\u753b\u5eca\u3002',
-    file: 'src/components/MapView.tsx (707 \u884c)',
-    tags: [['\u524d\u7aef\u7ec4\u4ef6', 'tag-blue'], ['3D', 'tag-purple']],
+    desc: 'V3: 1365 \u884c\u3002Three.js + R3F \u6e32\u67d3\u3002V3 \u65b0\u589e: \u8ba2\u9605 /object_search_trace \u2192 \u8282\u70b9\u6309\u641c\u7d22\u72b6\u6001\u67d3\u8272\u3002semantic_update_done \u4e8b\u4ef6\u89e6\u53d1 refetchTopology (debounce 400ms)\u3002\u53cc cache-buster URL (?v=capture_time&t=topoNonce) + <img key> \u5f3a\u5236 remount\u3002selectedNode \u6d3e\u751f\u81ea topoNodes \u907f\u514d stale\u3002',
+    file: 'src/components/MapView.tsx (1365 \u884c)',
+    tags: [['\u524d\u7aef\u7ec4\u4ef6', 'tag-blue'], ['3D', 'tag-purple'], ['V3', 'tag-green']],
   },
   robotview: {
     title: 'RobotView.tsx \u2014 \u7cfb\u7edf\u63a7\u5236\u4e2d\u5fc3',
@@ -707,15 +732,15 @@ const nodeData = {
   },
   rosstore: {
     title: 'rosStore.ts \u2014 ROS \u72b6\u6001\u7ba1\u7406',
-    desc: '\u81ea\u52a8\u68c0\u6d4b WS \u5730\u5740 (\u672c\u5730\u2192ws://localhost:9090, \u516c\u7f51\u2192wss://\u57df\u540d/rosbridge)\u3002\u65ad\u7ebf 3s \u91cd\u8fde\u3002\u8ba2\u9605 5 \u4e2a Topics: /navigation_feedback, /task_status, /system/status, /system/log, /map\u3002\u8c03\u7528 7 \u4e2a Services: startTask, cancelTask, launchMode, getSystemStatus, updateLLMConfig, deleteChatSession, queryTaskStatus\u3002',
-    file: 'src/store/rosStore.ts (367 \u884c)',
-    tags: [['\u72b6\u6001\u7ba1\u7406', 'tag-purple'], ['ROS2', 'tag-orange']],
+    desc: 'V3: 6 Topics + 8 Services\u3002\u65b0\u589e: objectSearchTrace \u72b6\u6001\u5b57\u6bb5 (\u8ba2\u9605 /object_search_trace)\u3002confirmTask(taskId, confirmed) \u8c03\u7528 /confirm_task \u670d\u52a1\u3002LLM \u914d\u7f6e\u6247\u51fa\u5230 perception \u8282\u70b9 (/perception/update_llm_config)\u3002',
+    file: 'src/store/rosStore.ts',
+    tags: [['\u72b6\u6001\u7ba1\u7406', 'tag-purple'], ['ROS2', 'tag-orange'], ['V3', 'tag-green']],
   },
   chatstore: {
     title: 'chatStore.ts \u2014 \u804a\u5929\u72b6\u6001\u7ba1\u7406',
-    desc: '\u4f1a\u8bdd\u5217\u8868+\u5f53\u524d\u6d88\u606f (\u670d\u52a1\u7aef\u540c\u6b65)\u3002SSE \u4e8b\u4ef6\u5904\u7406 (message_added/updated, session CRUD, llm_config_updated, \u81ea\u52a8\u53bb\u91cd)\u3002LLM Provider \u914d\u7f6e (\u670d\u52a1\u7aef\u6301\u4e45\u5316+SSE \u591a\u7aef\u540c\u6b65)\u3002\u4efb\u52a1\u6240\u6709\u6743\u8ffd\u8e2a (isTaskOwner/currentRobotMsgId)\u3002',
-    file: 'src/store/chatStore.ts (537 \u884c)',
-    tags: [['\u72b6\u6001\u7ba1\u7406', 'tag-purple']],
+    desc: 'V3 \u65b0\u589e SSE \u4e8b\u4ef6: message_removed (\u5220\u9664 polish \u5360\u4f4d\u6c14\u6ce1)\u3001auto_confirm_request (\u81ea\u52a8\u8c03 confirmTask)\u3002ChatMessage.meta \u65b0\u589e: polishFor / recallTarget / actions\u3002',
+    file: 'src/store/chatStore.ts',
+    tags: [['\u72b6\u6001\u7ba1\u7406', 'tag-purple'], ['V3', 'tag-green']],
   },
   mapstore: {
     title: 'mapStore.ts \u2014 \u5730\u56fe\u72b6\u6001\u7ba1\u7406',
@@ -731,9 +756,9 @@ const nodeData = {
   },
   chatsync: {
     title: 'chatSyncPlugin \u2014 \u6838\u5fc3\u670d\u52a1\u5668',
-    desc: '1493 \u884c, \u6574\u4e2a UI \u7684\u6838\u5fc3\u540e\u7aef\u3002REST API (\u4f1a\u8bdd CRUD + \u6d88\u606f\u8bfb\u5199)\u3002SSE \u5e7f\u64ad (\u591a\u6d4f\u89c8\u5668\u5b9e\u65f6\u540c\u6b65, 30s \u5fc3\u8df3)\u3002LLM \u6d41\u5f0f\u4ee3\u7406 (OpenAI \u517c\u5bb9, Gemini \u7279\u6b8a\u5904\u7406)\u3002\u56fe\u7247\u68c0\u7d22\u5f15\u64ce (\u62d3\u6251\u8bed\u4e49\u641c\u7d22, \u591a\u7ea7\u8bc4\u5206, \u8fd1\u4e49\u8bcd\u6269\u5c55)\u3002\u56fe\u7247\u6807\u6ce8\u5f15\u64ce (VLM Grounding + Sharp \u7ed8\u5236\u7ea2\u8272\u692d\u5706\u6846)\u3002',
-    file: 'vite-plugins/chatSyncPlugin.ts (1493 \u884c)',
-    tags: [['Vite Server', 'tag-green'], ['\u6838\u5fc3', 'tag-red']],
+    desc: 'V3: 2226 \u884c\u3002\u65b0\u589e 10 \u4e2a HTTP \u7aef\u70b9\u3002/api/chat/ros-event: \u63a5\u6536 ROS ChatEvent \u2192 \u590d\u5236\u56fe\u7247 \u2192 \u786c\u6570\u636e\u6d88\u606f \u2192 SSE \u5e7f\u64ad \u2192 LLM polish \u5360\u4f4d\u3002activeTaskBySession \u4efb\u52a1\u9694\u79bb\u95e8\u3002autoConfirmArmed 30s TTL\u3002buildKnownObjectVocab 5s \u7f13\u5b58\u3002',
+    file: 'vite-plugins/chatSyncPlugin.ts (2226 \u884c)',
+    tags: [['Vite Server', 'tag-green'], ['\u6838\u5fc3', 'tag-red'], ['V3', 'tag-green']],
   },
   llmproxy: {
     title: 'llmProxyPlugin \u2014 CORS \u4ee3\u7406',
@@ -836,6 +861,30 @@ const nodeData = {
     desc: '\u5f53\u524d chatSyncPlugin \u5185\u7f6e\u5b57\u7b26\u4e32\u5339\u914d\u3002\u53ef\u9009\u589e\u5f3a: \u2460 CheckObjectPresence service \u2192 VLM \u786e\u8ba4\u7269\u4f53\u771f\u5b9e\u5b58\u5728 \u2461 \u540e\u7aef\u8bed\u4e49\u5411\u91cf\u641c\u7d22\u66ff\u4ee3\u524d\u7aef\u5173\u952e\u8bcd\u5339\u914d\u3002',
     file: '\u9700\u540e\u7aef perception_node \u589e\u5f3a',
     tags: [['3.x \u53ef\u9009', 'tag-purple']],
+  },
+  'v3-search': {
+    title: 'V3: \u641c\u7d22\u95ed\u73af',
+    desc: 'locate_object \u5168\u6d41\u7a0b: \u8bb0\u5fc6\u53ec\u56de \u2192 AWAITING_CONFIRMATION \u2192 \u5e76\u884c VLM check (4 \u5f20\u56fe\u540c\u65f6) \u2192 \u8ddd\u79bb\u611f\u77e5\u88c1\u51b3 (near/mid/far) \u2192 hard_hit \u65e9\u9000 / best_guess \u5c3e\u76d8\u517c\u5e95\u3002ChatEvent HTTP \u6865\u63a5 \u2192 \u53cc\u6d88\u606f\uff08ROS \u786c\u6570\u636e + LLM \u6da6\u8272\uff09\u3002',
+    file: 'sstg_interaction_manager/interaction_manager_node.py (2068 \u884c)',
+    tags: [['V3 \u5df2\u843d\u5730', 'tag-green']],
+  },
+  'v3-map': {
+    title: 'V3: \u81ea\u4fee\u6b63\u5730\u56fe',
+    desc: '\u641c\u7d22\u547d\u4e2d\u8282\u70b9 \u2192 _copy_viewpoint_image \u8986\u76d6 map session rgb/depth\u3002aggregate_semantic \u6bcf\u6b21\u5168\u91cf\u91cd\u5efa search_objects\uff08\u4e0d\u7d2f\u79ef\u5386\u53f2\uff09\u3002save_map() bump capture_time \u2192 \u524d\u7aef URL cache-buster \u81ea\u52a8\u5931\u6548\u3002',
+    file: 'sstg_map_manager/topological_node.py',
+    tags: [['V3 \u5df2\u843d\u5730', 'tag-green']],
+  },
+  'v3-topo': {
+    title: 'V3: \u62d3\u6251\u52a8\u6001\u5237\u65b0',
+    desc: '\u4e09\u5c42\u9632\u5fa1: \u2460 mapSessionsPlugin \u5265 query \u4e32 + no-cache \u5934 \u2461 ?v=capture_time&t=topoNonce \u53cc buster \u2462 <img key> \u5f3a\u5236 remount\u3002semantic_update_done \u4e8b\u4ef6 debounce 400ms \u89e6\u53d1 refetchTopology\u3002selectedNode \u6d3e\u751f\u81ea topoNodes \u907f\u514d stale\u3002',
+    file: 'sstg_ui_app/src/components/MapView.tsx',
+    tags: [['V3 \u5df2\u843d\u5730', 'tag-green']],
+  },
+  'v3-recall': {
+    title: 'V3: Memory Recall + Auto-Confirm',
+    desc: 'objectMention.ts \u6b63\u5219\u68c0\u6d4b\u7269\u54c1\u8bcd \u2192 /api/chat/memory-recall \u2192 search_objects \u95f8\u53e3\u8fc7\u6ee4 (best_confidence\u22650.6) \u2192 \u5386\u53f2\u56fe+\u6309\u9215\u6c14\u6ce1\u3002\u70b9\u201c\u53bb\u770b\u770b\u201d \u2192 /api/chat/auto-confirm/arm (30s TTL) \u2192 startTask \u2192 SSE auto_confirm_request \u2192 confirmTask(true)\u3002',
+    file: 'sstg_ui_app/src/lib/objectMention.ts',
+    tags: [['V3 \u5df2\u843d\u5730', 'tag-green']],
   },
 };
 
