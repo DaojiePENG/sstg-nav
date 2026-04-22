@@ -4,6 +4,15 @@ import os
 
 package_name = 'sstg_map_manager'
 
+# Collect all files under maps/ recursively for data_files
+maps_data_files = []
+maps_base = 'maps'
+for dirpath, dirnames, filenames in os.walk(maps_base):
+    if filenames:
+        install_dir = os.path.join('share', package_name, dirpath)
+        file_paths = [os.path.join(dirpath, f) for f in filenames]
+        maps_data_files.append((install_dir, file_paths))
+
 setup(
     name=package_name,
     version='0.0.0',
@@ -17,7 +26,7 @@ setup(
         # 安装launch和config目录（保持你的文件结构）
         (os.path.join('share', package_name, 'launch'), glob.glob('launch/*.py')),
         (os.path.join('share', package_name, 'config'), glob.glob('config/*.yaml')),
-    ],
+    ] + maps_data_files,
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='daojie',

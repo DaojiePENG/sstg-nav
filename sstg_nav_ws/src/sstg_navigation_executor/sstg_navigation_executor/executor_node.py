@@ -190,7 +190,10 @@ class ExecutorNode(Node):
             
             msg.current_pose.position.x = feedback.current_pose[0]
             msg.current_pose.position.y = feedback.current_pose[1]
-            
+            theta = feedback.current_pose[2] if len(feedback.current_pose) > 2 else 0.0
+            msg.current_pose.orientation.z = math.sin(theta / 2.0)
+            msg.current_pose.orientation.w = math.cos(theta / 2.0)
+
             self.feedback_pub.publish(msg)
             
         except Exception as e:

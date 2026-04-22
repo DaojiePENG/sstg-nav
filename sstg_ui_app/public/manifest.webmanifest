@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "SSTG Nav",
+  "short_name": "SSTG Nav",
+  "description": "SSTG 机器人导航控制中心，集成语义地图可视化、任务对话与机器人状态编排。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#02224e",
+  "theme_color": "#02224e",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

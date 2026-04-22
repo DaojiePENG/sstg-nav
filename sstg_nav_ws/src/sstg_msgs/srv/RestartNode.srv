@@ -1,0 +1,7 @@
+# RestartNode.srv — 重启指定 SSTG 核心节点
+string node_name
+bool kill_duplicates
+---
+bool success
+string message
+string[] killed_pids

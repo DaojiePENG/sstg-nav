@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSTG Interaction Manager 链路图</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --panel: rgba(255, 252, 247, 0.86);
+      --ink: #1e2430;
+      --muted: #5e6675;
+      --line: rgba(30, 36, 48, 0.18);
+      --accent: #0f6c5a;
+      --accent-2: #d96c3f;
+      --warn: #c53b2c;
+      --ok: #2d7a46;
+      --soft-green: #dceee5;
+      --soft-orange: #f7dfd1;
+      --soft-blue: #dce9f5;
+      --soft-red: #f5d9d7;
+      --shadow: 0 18px 45px rgba(46, 42, 36, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(217, 108, 63, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(15, 108, 90, 0.14), transparent 32%),
+        linear-gradient(135deg, #f8f3eb 0%, #f3ebe0 48%, #efe7dc 100%);
+      padding: 28px;
+    }
+
+    .shell {
+      max-width: 1500px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 28px 32px 18px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(15, 108, 90, 0.08), rgba(217, 108, 63, 0.08)),
+        transparent;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+      max-width: 980px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 18px 32px 6px;
+    }
+
+    .toggle {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .toggle button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: all 160ms ease;
+    }
+
+    .toggle button.active {
+      background: var(--ink);
+      color: white;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1.9fr 0.95fr;
+      gap: 0;
+      min-height: 860px;
+    }
+
+    .viz-wrap {
+      position: relative;
+      border-right: 1px solid var(--line);
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(30, 36, 48, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 36, 48, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .viz-note {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      z-index: 4;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      max-width: 340px;
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.06);
+    }
+
+    .viz-note strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .viz-note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .node {
+      transition: opacity 180ms ease;
+    }
+
+    .node rect {
+      stroke: rgba(34, 40, 52, 0.18);
+      stroke-width: 1.2;
+      rx: 18;
+      ry: 18;
+    }
+
+    .node:hover rect {
+      stroke: rgba(34, 40, 52, 0.34);
+      stroke-width: 2;
+    }
+
+    .node-title {
+      font-size: 16px;
+      font-weight: 800;
+      fill: var(--ink);
+    }
+
+    .node-sub {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+
+    .group-label {
+      font-size: 15px;
+      font-weight: 800;
+      fill: #324055;
+    }
+
+    .group-box {
+      fill: rgba(255, 255, 255, 0.32);
+      stroke: rgba(30, 36, 48, 0.12);
+      stroke-width: 1.2;
+      stroke-dasharray: 8 7;
+      rx: 24;
+      ry: 24;
+    }
+
+    .edge {
+      fill: none;
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      opacity: 0.95;
+    }
+
+    .edge-core {
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-dasharray: 10 12;
+      animation: dash 1.3s linear infinite;
+    }
+
+    .edge-passive {
+      opacity: 0.35;
+    }
+
+    .edge-critical {
+      stroke-width: 4.2;
+    }
+
+    .state-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .state-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .panel {
+      padding: 24px 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0.58));
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-top: 12px;
+    }
+
+    .status.bad {
+      background: var(--soft-red);
+      color: #8c2419;
+    }
+
+    .status.good {
+      background: var(--soft-green);
+      color: #205433;
+    }
+
+    .facts {
+      display: grid;
+      gap: 10px;
+    }
+
+    .fact {
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .fact.current {
+      background: var(--soft-orange);
+      color: #6e371f;
+    }
+
+    .fact.target {
+      background: var(--soft-blue);
+      color: #1d4565;
+    }
+
+    .paths {
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .paths code {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(30, 36, 48, 0.05);
+      color: var(--ink);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .footer {
+      padding: 10px 24px 24px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -44;
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .viz-wrap {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        min-height: 760px;
+      }
+    }
+
+    @media (max-width: 780px) {
+      body {
+        padding: 12px;
+      }
+
+      .hero, .toolbar, .panel, .footer {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .hero h1 {
+        font-size: 26px;
+      }
+
+      .viz-wrap {
+        min-height: 680px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <h1>SSTG Interaction Manager 链路展示</h1>
+      <p>
+        这张图把你项目里“当前真实调用关系”和“目标统一编排关系”并排抽象到一个可切换的动态图里。
+        核心判断很明确：现在只有自然语言导航主链经过了 <strong>interaction manager</strong>，
+        采集、点击标注和语义更新链路仍在直接互调。
+      </p>
+    </div>
+
+    <div class="toolbar">
+      <div class="toggle" role="tablist" aria-label="状态切换">
+        <button id="btn-current" class="active" type="button">当前架构</button>
+        <button id="btn-target" type="button">目标架构</button>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:#d96c3f"></i> 外部入口</span>
+        <span><i class="dot" style="background:#0f6c5a"></i> Interaction Manager</span>
+        <span><i class="dot" style="background:#5b7ea3"></i> 业务模块</span>
+        <span><i class="dot" style="background:#c53b2c"></i> 绕过 / 未收口</span>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="viz-wrap">
+        <div class="viz-note">
+          <strong id="note-title">当前真实情况</strong>
+          <p id="note-text">
+            interaction manager 只接住了自然语言导航主链。你要的目标不是让它直接连硬件，而是让 Nav2 和 Camera / VLM 这两条能力链都只能经由 interaction manager 间接触发。
+          </p>
+        </div>
+
+        <svg viewBox="0 0 1180 860" xmlns="http://www.w3.org/2000/svg" aria-label="SSTG 架构图">
+          <defs>
+            <marker id="arrow-orange" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#d96c3f"></path>
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f6c5a"></path>
+            </marker>
+            <marker id="arrow-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#c53b2c"></path>
+            </marker>
+            <marker id="arrow-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b7ea3"></path>
+            </marker>
+          </defs>
+
+          <g id="scene-current" class="state-visible">
+            <rect class="group-box" x="36" y="72" width="250" height="660"></rect>
+            <text class="group-label" x="54" y="104">外部入口</text>
+
+            <rect class="group-box" x="332" y="72" width="190" height="250"></rect>
+            <text class="group-label" x="350" y="104">编排层</text>
+
+            <rect class="group-box" x="560" y="56" width="270" height="700"></rect>
+            <text class="group-label" x="580" y="88">SSTG 服务模块</text>
+
+            <rect class="group-box" x="868" y="210" width="250" height="340"></rect>
+            <text class="group-label" x="888" y="242">底层执行</text>
+
+            <g class="node" transform="translate(56 132)">
+              <rect width="210" height="84" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">自然语言入口</text>
+              <text class="node-sub" x="18" y="58">start_task / find_and_navigate</text>
+            </g>
+
+            <g class="node" transform="translate(56 276)">
+              <rect width="210" height="84" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">node_semantic_collector</text>
+              <text class="node-sub" x="18" y="58">批量节点采集</text>
+            </g>
+
+            <g class="node" transform="translate(56 420)">
+              <rect width="210" height="84" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">click_and_capture</text>
+              <text class="node-sub" x="18" y="58">RViz 点击采集入口</text>
+            </g>
+
+            <g class="node" transform="translate(56 564)">
+              <rect width="210" height="84" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">/clicked_point</text>
+              <text class="node-sub" x="18" y="58">交互输入源</text>
+            </g>
+
+            <g class="node" transform="translate(352 150)">
+              <rect width="150" height="94" fill="#dceee5"></rect>
+              <text class="node-title" x="18" y="36">interaction</text>
+              <text class="node-title" x="18" y="58">manager</text>
+              <text class="node-sub" x="18" y="78">仅导航主链</text>
+            </g>
+
+            <g class="node" transform="translate(584 98)">
+              <rect width="220" height="80" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">process_nlp_query</text>
+              <text class="node-sub" x="18" y="57">sstg_nlp_interface</text>
+            </g>
+
+            <g class="node" transform="translate(584 214)">
+              <rect width="220" height="92" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">plan_navigation</text>
+              <text class="node-sub" x="18" y="57">planner 仍可能回退到 mock map</text>
+            </g>
+
+            <g class="node" transform="translate(584 346)">
+              <rect width="220" height="98" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">map_manager</text>
+              <text class="node-sub" x="18" y="57">create_node / get_node_pose</text>
+              <text class="node-sub" x="18" y="76">update_semantic</text>
+            </g>
+
+            <g class="node" transform="translate(584 494)">
+              <rect width="220" height="96" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">perception</text>
+              <text class="node-sub" x="18" y="57">capture_panorama / annotate_semantic</text>
+            </g>
+
+            <g class="node" transform="translate(584 640)">
+              <rect width="220" height="80" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">executor</text>
+              <text class="node-sub" x="18" y="57">execute_navigation</text>
+            </g>
+
+            <g class="node" transform="translate(890 288)">
+              <rect width="206" height="92" fill="#fff3d9"></rect>
+              <text class="node-title" x="18" y="36">Nav2</text>
+              <text class="node-sub" x="18" y="60">NavigateToPose</text>
+            </g>
+
+            <g class="node" transform="translate(890 426)">
+              <rect width="206" height="92" fill="#fff3d9"></rect>
+              <text class="node-title" x="18" y="36">Camera / VLM</text>
+              <text class="node-sub" x="18" y="60">全景采集与语义识别</text>
+            </g>
+
+            <path class="edge" d="M266 174 C 310 174, 310 197, 352 197" stroke="#d96c3f" marker-end="url(#arrow-orange)"></path>
+            <path class="edge-core" d="M266 174 C 310 174, 310 197, 352 197" stroke="#d96c3f"></path>
+
+            <path class="edge edge-critical" d="M502 197 C 540 197, 542 138, 584 138" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M502 197 C 540 197, 542 138, 584 138" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M502 197 C 540 197, 542 260, 584 260" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M502 197 C 540 197, 542 260, 584 260" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M502 197 C 540 197, 542 392, 584 392" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M502 197 C 540 197, 542 392, 584 392" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M502 197 C 540 197, 542 680, 584 680" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M502 197 C 540 197, 542 680, 584 680" stroke="#0f6c5a"></path>
+
+            <path class="edge" d="M804 680 C 848 680, 846 338, 890 338" stroke="#5b7ea3" marker-end="url(#arrow-blue)"></path>
+            <path class="edge-core" d="M804 680 C 848 680, 846 338, 890 338" stroke="#5b7ea3"></path>
+
+            <path class="edge edge-passive" d="M804 544 C 848 544, 848 472, 890 472" stroke="#5b7ea3" marker-end="url(#arrow-blue)"></path>
+            <path class="edge-core edge-passive" d="M804 544 C 848 544, 848 472, 890 472" stroke="#5b7ea3"></path>
+
+            <path class="edge edge-critical" d="M266 318 C 420 318, 438 392, 584 392" stroke="#c53b2c" marker-end="url(#arrow-red)"></path>
+            <path class="edge-core" d="M266 318 C 420 318, 438 392, 584 392" stroke="#c53b2c"></path>
+
+            <path class="edge edge-critical" d="M266 318 C 474 318, 612 334, 890 334" stroke="#c53b2c" marker-end="url(#arrow-red)"></path>
+            <path class="edge-core" d="M266 318 C 474 318, 612 334, 890 334" stroke="#c53b2c"></path>
+
+            <path class="edge edge-critical" d="M266 318 C 422 318, 446 544, 584 544" stroke="#c53b2c" marker-end="url(#arrow-red)"></path>
+            <path class="edge-core" d="M266 318 C 422 318, 446 544, 584 544" stroke="#c53b2c"></path>
+
+            <path class="edge edge-critical" d="M266 462 C 422 462, 446 392, 584 392" stroke="#c53b2c" marker-end="url(#arrow-red)"></path>
+            <path class="edge-core" d="M266 462 C 422 462, 446 392, 584 392" stroke="#c53b2c"></path>
+
+            <path class="edge edge-critical" d="M266 462 C 472 462, 620 338, 890 338" stroke="#c53b2c" marker-end="url(#arrow-red)"></path>
+            <path class="edge-core" d="M266 462 C 472 462, 620 338, 890 338" stroke="#c53b2c"></path>
+
+            <path class="edge edge-critical" d="M266 462 C 420 462, 448 544, 584 544" stroke="#c53b2c" marker-end="url(#arrow-red)"></path>
+            <path class="edge-core" d="M266 462 C 420 462, 448 544, 584 544" stroke="#c53b2c"></path>
+
+            <path class="edge" d="M266 606 C 310 606, 320 462, 56 462" stroke="#d96c3f" marker-end="url(#arrow-orange)"></path>
+            <path class="edge-core" d="M266 606 C 310 606, 320 462, 56 462" stroke="#d96c3f"></path>
+          </g>
+
+          <g id="scene-target" class="state-hidden">
+            <rect class="group-box" x="42" y="92" width="244" height="620"></rect>
+            <text class="group-label" x="60" y="124">统一外部入口</text>
+
+            <rect class="group-box" x="330" y="112" width="214" height="580"></rect>
+            <text class="group-label" x="350" y="144">唯一编排层</text>
+
+            <rect class="group-box" x="594" y="70" width="240" height="660"></rect>
+            <text class="group-label" x="614" y="102">能力服务层</text>
+
+            <rect class="group-box" x="892" y="188" width="230" height="400"></rect>
+            <text class="group-label" x="912" y="220">物理执行与感知</text>
+
+            <g class="node" transform="translate(62 150)">
+              <rect width="204" height="80" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">自然语言入口</text>
+              <text class="node-sub" x="18" y="57">用户 / 上层脚本</text>
+            </g>
+
+            <g class="node" transform="translate(62 288)">
+              <rect width="204" height="80" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">node_semantic_collector</text>
+              <text class="node-sub" x="18" y="57">只提交任务，不再直连</text>
+            </g>
+
+            <g class="node" transform="translate(62 426)">
+              <rect width="204" height="80" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">click_and_capture</text>
+              <text class="node-sub" x="18" y="57">只触发任务请求</text>
+            </g>
+
+            <g class="node" transform="translate(62 564)">
+              <rect width="204" height="80" fill="#f7dfd1"></rect>
+              <text class="node-title" x="18" y="34">/clicked_point</text>
+              <text class="node-sub" x="18" y="57">仍作为输入事件源</text>
+            </g>
+
+            <g class="node" transform="translate(352 250)">
+              <rect width="170" height="128" fill="#dceee5"></rect>
+              <text class="node-title" x="18" y="38">interaction</text>
+              <text class="node-title" x="18" y="62">manager</text>
+              <text class="node-sub" x="18" y="88">导航 + 采集 + 标注</text>
+              <text class="node-sub" x="18" y="108">统一状态与编排</text>
+            </g>
+
+            <g class="node" transform="translate(610 102)">
+              <rect width="208" height="78" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">NLP</text>
+              <text class="node-sub" x="18" y="57">process_nlp_query</text>
+            </g>
+
+            <g class="node" transform="translate(610 220)">
+              <rect width="208" height="82" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">Planner</text>
+              <text class="node-sub" x="18" y="57">plan_navigation</text>
+            </g>
+
+            <g class="node" transform="translate(610 346)">
+              <rect width="208" height="106" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">Map Manager</text>
+              <text class="node-sub" x="18" y="57">create_node / get_node_pose</text>
+              <text class="node-sub" x="18" y="80">update_semantic</text>
+            </g>
+
+            <g class="node" transform="translate(610 500)">
+              <rect width="208" height="92" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">Perception</text>
+              <text class="node-sub" x="18" y="57">capture_panorama / annotate_semantic</text>
+            </g>
+
+            <g class="node" transform="translate(610 636)">
+              <rect width="208" height="80" fill="#dce9f5"></rect>
+              <text class="node-title" x="18" y="34">Executor</text>
+              <text class="node-sub" x="18" y="57">execute_navigation</text>
+            </g>
+
+            <g class="node" transform="translate(906 278)">
+              <rect width="194" height="88" fill="#fff3d9"></rect>
+              <text class="node-title" x="18" y="36">Nav2</text>
+              <text class="node-sub" x="18" y="60">仅允许经 executor 间接触发</text>
+            </g>
+
+            <g class="node" transform="translate(906 432)">
+              <rect width="194" height="88" fill="#fff3d9"></rect>
+              <text class="node-title" x="18" y="36">Camera / VLM</text>
+              <text class="node-sub" x="18" y="60">仅允许经 perception 间接触发</text>
+            </g>
+
+            <path class="edge" d="M266 190 C 314 190, 320 292, 352 312" stroke="#d96c3f" marker-end="url(#arrow-orange)"></path>
+            <path class="edge-core" d="M266 190 C 314 190, 320 292, 352 312" stroke="#d96c3f"></path>
+
+            <path class="edge" d="M266 328 C 314 328, 320 318, 352 318" stroke="#d96c3f" marker-end="url(#arrow-orange)"></path>
+            <path class="edge-core" d="M266 328 C 314 328, 320 318, 352 318" stroke="#d96c3f"></path>
+
+            <path class="edge" d="M266 466 C 314 466, 320 342, 352 330" stroke="#d96c3f" marker-end="url(#arrow-orange)"></path>
+            <path class="edge-core" d="M266 466 C 314 466, 320 342, 352 330" stroke="#d96c3f"></path>
+
+            <path class="edge edge-passive" d="M266 604 C 308 604, 316 466, 62 466" stroke="#d96c3f" marker-end="url(#arrow-orange)"></path>
+            <path class="edge-core edge-passive" d="M266 604 C 308 604, 316 466, 62 466" stroke="#d96c3f"></path>
+
+            <path class="edge edge-critical" d="M522 296 C 566 296, 568 142, 610 142" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M522 296 C 566 296, 568 142, 610 142" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M522 304 C 566 304, 568 262, 610 262" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M522 304 C 566 304, 568 262, 610 262" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M522 318 C 566 318, 568 400, 610 400" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M522 318 C 566 318, 568 400, 610 400" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M522 332 C 566 332, 568 546, 610 546" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M522 332 C 566 332, 568 546, 610 546" stroke="#0f6c5a"></path>
+
+            <path class="edge edge-critical" d="M522 344 C 566 344, 568 676, 610 676" stroke="#0f6c5a" marker-end="url(#arrow-green)"></path>
+            <path class="edge-core" d="M522 344 C 566 344, 568 676, 610 676" stroke="#0f6c5a"></path>
+
+            <path class="edge" d="M818 676 C 870 676, 866 322, 906 322" stroke="#5b7ea3" marker-end="url(#arrow-blue)"></path>
+            <path class="edge-core" d="M818 676 C 870 676, 866 322, 906 322" stroke="#5b7ea3"></path>
+
+            <path class="edge" d="M818 546 C 870 546, 868 476, 906 476" stroke="#5b7ea3" marker-end="url(#arrow-blue)"></path>
+            <path class="edge-core" d="M818 546 C 870 546, 868 476, 906 476" stroke="#5b7ea3"></path>
+          </g>
+        </svg>
+      </div>
+
+      <div class="panel">
+        <div class="card">
+          <h2 id="summary-title">架构判断</h2>
+          <p id="summary-text">
+            当前系统属于“部分收口”。interaction manager 管住了自然语言导航，但采集与语义标注工具链还没统一进编排层，外部脚本仍可绕过它去直接触发 Nav2 链和 Camera / VLM 链。
+          </p>
+          <div id="summary-badge" class="status bad">尚未实现统一中转</div>
+        </div>
+
+        <div class="card">
+          <h2>关键事实</h2>
+          <div id="facts" class="facts">
+            <div class="fact current">`node_semantic_collector` 直接调用 `create_node / NavigateToPose / capture_panorama / annotate_semantic / update_semantic`。</div>
+            <div class="fact current">`click_and_capture` 也是直接连 map_manager、perception 和 Nav2，没有经过 interaction manager。</div>
+            <div class="fact current">`planning_node` 当前取真实拓扑图的函数没有闭环，失败时会退回 mock map。</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>最重要的调用路径</h2>
+          <div id="paths" class="paths">
+            <code>自然语言入口 -> interaction_manager -> NLP -> planner -> get_node_pose -> executor -> Nav2</code>
+            <code>node_semantic_collector -> create_node -> NavigateToPose -> capture_panorama -> annotate_semantic -> update_semantic</code>
+            <code>/clicked_point -> click_and_capture -> create_node -> NavigateToPose -> capture_panorama -> annotate_semantic -> update_semantic</code>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>你后面要补的地方</h2>
+          <p id="todo-text">
+            给 interaction manager 增加采集类任务接口，把外部脚本改成只和 interaction manager 交互。目标约束是：Nav2 只能经 executor 被 interaction manager 间接触发，Camera / VLM 只能经 perception 被 interaction manager 间接触发。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      文件是纯前端单页，无外部依赖。直接用浏览器打开即可。
+    </div>
+  </div>
+
+  <script>
+    const btnCurrent = document.getElementById('btn-current');
+    const btnTarget = document.getElementById('btn-target');
+    const sceneCurrent = document.getElementById('scene-current');
+    const sceneTarget = document.getElementById('scene-target');
+    const noteTitle = document.getElementById('note-title');
+    const noteText = document.getElementById('note-text');
+    const summaryTitle = document.getElementById('summary-title');
+    const summaryText = document.getElementById('summary-text');
+    const summaryBadge = document.getElementById('summary-badge');
+    const facts = document.getElementById('facts');
+    const paths = document.getElementById('paths');
+    const todoText = document.getElementById('todo-text');
+
+    function setState(mode) {
+      const current = mode === 'current';
+      btnCurrent.classList.toggle('active', current);
+      btnTarget.classList.toggle('active', !current);
+      sceneCurrent.classList.toggle('state-visible', current);
+      sceneCurrent.classList.toggle('state-hidden', !current);
+      sceneTarget.classList.toggle('state-visible', !current);
+      sceneTarget.classList.toggle('state-hidden', current);
+
+      if (current) {
+        noteTitle.textContent = '当前真实情况';
+        noteText.textContent = 'interaction manager 只接住了自然语言导航主链。你要的目标不是让它直接连硬件，而是让 Nav2 和 Camera / VLM 这两条能力链都只能经由 interaction manager 间接触发。';
+        summaryTitle.textContent = '架构判断';
+        summaryText.textContent = '当前系统属于“部分收口”。interaction manager 管住了自然语言导航，但采集与语义标注工具链还没统一进编排层，外部脚本仍可绕过它去直接触发 Nav2 链和 Camera / VLM 链。';
+        summaryBadge.textContent = '尚未实现统一中转';
+        summaryBadge.className = 'status bad';
+        facts.innerHTML = `
+          <div class="fact current">\`node_semantic_collector\` 直接调用 \`create_node / NavigateToPose / capture_panorama / annotate_semantic / update_semantic\`。</div>
+          <div class="fact current">\`click_and_capture\` 也是直接连 map_manager、perception 和 Nav2，没有经过 interaction manager。</div>
+          <div class="fact current">\`planning_node\` 当前取真实拓扑图的函数没有闭环，失败时会退回 mock map。</div>
+        `;
+        paths.innerHTML = `
+          <code>自然语言入口 -> interaction_manager -> NLP -> planner -> get_node_pose -> executor -> Nav2</code>
+          <code>node_semantic_collector -> create_node -> NavigateToPose -> capture_panorama -> annotate_semantic -> update_semantic</code>
+          <code>/clicked_point -> click_and_capture -> create_node -> NavigateToPose -> capture_panorama -> annotate_semantic -> update_semantic</code>
+        `;
+        todoText.textContent = '给 interaction manager 增加采集类任务接口，把外部脚本改成只和 interaction manager 交互。目标约束是：Nav2 只能经 executor 被 interaction manager 间接触发，Camera / VLM 只能经 perception 被 interaction manager 间接触发。';
+      } else {
+        noteTitle.textContent = '目标统一架构';
+        noteText.textContent = '所有外部入口都只提交任务给 interaction manager。Nav2 通过 executor 间接调用，Camera / VLM 通过 perception 间接调用；二者都不再被外部脚本直接触发。';
+        summaryTitle.textContent = '目标状态';
+        summaryText.textContent = 'interaction manager 成为唯一任务入口。各模块退回成能力提供者，Nav2 和 Camera / VLM 只保留经由 interaction manager 的间接调用路径，系统具备统一状态机、统一错误处理和统一任务日志。';
+        summaryBadge.textContent = '统一中转后才算完成';
+        summaryBadge.className = 'status good';
+        facts.innerHTML = `
+          <div class="fact target">自然语言入口、节点采集脚本、RViz 点击入口都只调用 interaction manager。</div>
+          <div class="fact target">外部入口不能再直接调用 Nav2 和 Camera / VLM；二者都必须挂在 interaction manager 编排链后面。</div>
+          <div class="fact target">\`interaction_manager -> executor -> Nav2\` 和 \`interaction_manager -> perception -> Camera / VLM\` 是两条必须保留的间接调用链。</div>
+          <div class="fact target">interaction manager 统一编排 \`create_node / execute_navigation / capture_panorama / annotate_semantic / update_semantic\`。</div>
+          <div class="fact target">planner 读取真实拓扑图，不再依赖 mock map 兜底。</div>
+        `;
+        paths.innerHTML = `
+          <code>自然语言入口 -> interaction_manager -> NLP -> planner -> map_manager -> executor -> Nav2</code>
+          <code>节点采集入口 -> interaction_manager -> executor -> Nav2</code>
+          <code>节点采集入口 -> interaction_manager -> perception -> Camera / VLM</code>
+          <code>完整采集任务 -> interaction_manager -> create_node -> executor -> Nav2 -> perception -> Camera / VLM -> update_semantic</code>
+        `;
+        todoText.textContent = '下一步最合适的是先把 node_semantic_collector 和 click_and_capture 改成 interaction manager 的客户端，再补 interaction manager 内部对 executor / Nav2 与 perception / Camera / VLM 的采集任务编排。';
+      }
+    }
+
+    btnCurrent.addEventListener('click', () => setState('current'));
+    btnTarget.addEventListener('click', () => setState('target'));
+  </script>
+</body>
+</html>
