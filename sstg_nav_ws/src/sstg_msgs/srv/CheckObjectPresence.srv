@@ -1,0 +1,7 @@
+string image_path
+string target_object
+---
+bool found
+float32 confidence
+string description
+string error_message

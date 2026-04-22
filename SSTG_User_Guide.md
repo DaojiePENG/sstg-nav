@@ -70,7 +70,69 @@ python3 --version          # 应显示 3.10+
 
 如果环境不完整，请参考 [INSTALLATION.md](sstg_nav_ws/INSTALLATION.md) 进行详细安装。
 
-### 第二步：克隆或进入工作空间
+### 第二步：安装 ROS2 系统依赖
+
+```bash
+# 安装导航、SLAM、定位、IMU 滤波、CycloneDDS 等必备包
+sudo apt install -y \
+  ros-humble-nav2-bringup \
+  ros-humble-slam-toolbox \
+  ros-humble-robot-localization \
+  ros-humble-imu-filter-madgwick \
+  ros-humble-rmw-cyclonedds-cpp \
+  ros-humble-nav2-msgs \
+  ros-humble-pcl-ros
+
+# 安装 ROS2 构建所需的 Python 包（Anaconda 用户必装）
+pip3 install empy==3.3.4 lark
+```
+
+### 第三步：编译工作空间
+
+> **Anaconda 用户注意**：编译前必须退出 conda 环境，否则 CMake 会使用 Anaconda Python 导致找不到 `catkin_pkg` 等 ROS2 依赖。
+
+以下命令中 `<sstg-nav>` 代表项目根目录（即 clone 后的 `sstg-nav/` 所在路径）。
+
+```bash
+# 退出 conda 环境
+conda deactivate
+
+# 1. 编译 Yahboom 硬件驱动包
+cd <sstg-nav>/yahboomcar_ws
+colcon build --symlink-install
+# 预期：22 packages finished
+
+# 2. 编译 SSTG 导航系统
+cd <sstg-nav>/sstg_nav_ws
+source /opt/ros/humble/setup.bash
+source <sstg-nav>/yahboomcar_ws/install/setup.bash
+colcon build --symlink-install
+# 预期：8 packages finished (sstg_msgs, sstg_rrt_explorer, sstg_map_manager, sstg_perception 等)
+```
+
+### 第四步：配置环境变量
+
+每个终端使用前需要 source 以下环境（建议写入 `~/.bashrc`）：
+
+```bash
+source /opt/ros/humble/setup.bash
+source <sstg-nav>/yahboomcar_ws/install/setup.bash
+source <sstg-nav>/sstg_nav_ws/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export ROS_DOMAIN_ID=28
+export DASHSCOPE_API_KEY=<your-dashscope-api-key>
+```
+
+验证编译结果：
+```bash
+ros2 pkg list | grep sstg
+# 应包含: sstg_msgs, sstg_rrt_explorer, sstg_map_manager, sstg_perception 等
+
+ros2 pkg list | grep yahboomcar
+# 应包含: yahboomcar_bringup, yahboomcar_base_node 等
+```
+
+### 第五步：克隆或进入工作空间
 
 ```bash
 # 如果已有工作空间，进入目录
@@ -80,25 +142,7 @@ cd ~/sstg-nav
 ls -la | grep nav_ws
 ```
 
-### 第三步：构建SSTG系统
-
-```bash
-# 进入SSTG独立工作空间
-cd ~/sstg-nav/sstg_nav_ws
-
-# 安装系统依赖（如果之前没有安装）
-sudo apt-get install ros-humble-nav2 ros-humble-rclpy -y
-
-# 构建所有包（第一次需要3-5分钟）
-colcon build --symlink-install
-
-# Source环境变量
-source install/setup.bash
-```
-
-> **注意**: 如果构建失败，检查 [INSTALLATION.md](sstg_nav_ws/INSTALLATION.md) 中的常见问题。
-
-### 第四步：验证安装
+### 第六步：验证安装
 
 ```bash
 # 检查所有SSTG包是否成功构建

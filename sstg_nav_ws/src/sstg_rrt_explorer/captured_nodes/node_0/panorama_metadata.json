@@ -1,0 +1,19 @@
+{
+  "node_id": 0,
+  "pose": {
+    "x": 0.762,
+    "y": -1.458,
+    "theta": 0.0
+  },
+  "timestamp": "2026-04-19T20:53:26.884980",
+  "images": {
+    "0": "/home/daojie/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/000deg_rgb.png",
+    "90": "/home/daojie/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/090deg_rgb.png",
+    "180": "/home/daojie/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/180deg_rgb.png",
+    "270": "/home/daojie/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/270deg_rgb.png"
+  },
+  "complete": true,
+  "failed_angle": null,
+  "failed_angles": [],
+  "error_message": ""
+}

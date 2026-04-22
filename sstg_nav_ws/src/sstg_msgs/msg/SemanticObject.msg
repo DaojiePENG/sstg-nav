@@ -1,4 +1,9 @@
 string name
+string name_cn
 string position
 int32 quantity
 float32 confidence
+string distance_hint
+float32 salience
+string visibility
+string image_region

@@ -1,0 +1,207 @@
+{
+  "records": [
+    {
+      "pose": {
+        "x": 0.762,
+        "y": -1.458
+      },
+      "status": "semantic_updated",
+      "node_id": 0,
+      "image_paths": [
+        "0:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/000deg_rgb.png",
+        "90:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/090deg_rgb.png",
+        "180:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/180deg_rgb.png",
+        "270:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_0/270deg_rgb.png"
+      ],
+      "semantic": {
+        "room_type": "办公室/走廊",
+        "confidence": 0.949999988079071,
+        "description": "这是一间办公室或走廊的场景，地面为浅色地板，左侧墙上有公告栏和奖杯展示架，右侧前景有一把黑色办公椅，远处可见一个灭火器。",
+        "objects": [
+          "办公椅",
+          "公告栏",
+          "奖杯",
+          "灭火器",
+          "办公桌",
+          "电脑显示器",
+          "椅子",
+          "公告板",
+          "彩色隔断",
+          "消防柜",
+          "垃圾桶",
+          "饮水机",
+          "门",
+          "长桌",
+          "橱柜",
+          "冰箱",
+          "水瓶"
+        ]
+      },
+      "capture_complete": true,
+      "capture_error": ""
+    },
+    {
+      "pose": {
+        "x": 2.71,
+        "y": -3.284
+      },
+      "status": "semantic_updated",
+      "node_id": 1,
+      "image_paths": [
+        "0:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_1/000deg_rgb.png",
+        "90:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_1/090deg_rgb.png",
+        "180:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_1/180deg_rgb.png",
+        "270:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_1/270deg_rgb.png"
+      ],
+      "semantic": {
+        "room_type": "办公室",
+        "confidence": 0.949999988079071,
+        "description": "这是一个办公室环境，地面为浅色木质地板，房间内有几把黑色办公椅和一张圆形桌子，背景中可见一个文件柜和一个纸箱。",
+        "objects": [
+          "办公椅",
+          "圆桌",
+          "文件柜",
+          "纸箱",
+          "电脑桌",
+          "海报/公告栏",
+          "垃圾桶",
+          "橱柜",
+          "水杯"
+        ]
+      },
+      "capture_complete": true,
+      "capture_error": ""
+    },
+    {
+      "pose": {
+        "x": 5.23,
+        "y": -0.138
+      },
+      "status": "semantic_updated",
+      "node_id": 2,
+      "image_paths": [
+        "0:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_2/000deg_rgb.png",
+        "90:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_2/090deg_rgb.png",
+        "180:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_2/180deg_rgb.png",
+        "270:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_2/270deg_rgb.png"
+      ],
+      "semantic": {
+        "room_type": "走廊",
+        "confidence": 0.949999988079071,
+        "description": "这是一条狭长的室内走廊，墙壁为白色，地面铺有灰色地毯。走廊两侧有几扇门，远处可见一个灭火器。右侧地面上放置着一个红色物品，走廊中央有一个黑色物品。",
+        "objects": [
+          "红色物品",
+          "黑色物品",
+          "灭火器",
+          "书架",
+          "书籍",
+          "玩偶",
+          "办公椅",
+          "圆桌",
+          "橱柜",
+          "微波炉",
+          "蓝色座椅",
+          "红色座椅",
+          "人",
+          "文件柜",
+          "红色布料",
+          "水瓶"
+        ]
+      },
+      "capture_complete": true,
+      "capture_error": ""
+    },
+    {
+      "pose": {
+        "x": 8.466,
+        "y": -0.042
+      },
+      "status": "semantic_updated",
+      "node_id": 3,
+      "image_paths": [
+        "0:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_3/000deg_rgb.png",
+        "90:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_3/090deg_rgb.png",
+        "180:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_3/180deg_rgb.png",
+        "270:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_3/270deg_rgb.png"
+      ],
+      "semantic": {
+        "room_type": "走廊",
+        "confidence": 0.949999988079071,
+        "description": "这是一条狭长的室内走廊，地面铺有灰色地毯，墙壁为白色。走廊两侧有多扇门，远处有一扇玻璃门，门上方有绿色出口标志。右侧墙角放置着一个黑色背包，背景中可见一个红色灭火器。",
+        "objects": [
+          "背包",
+          "灭火器",
+          "工具架",
+          "办公椅",
+          "桌子",
+          "积木",
+          "置物架",
+          "踢脚线"
+        ]
+      },
+      "capture_complete": true,
+      "capture_error": ""
+    },
+    {
+      "pose": {
+        "x": 10.585,
+        "y": -0.019
+      },
+      "status": "semantic_updated",
+      "node_id": 4,
+      "image_paths": [
+        "0:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_4/000deg_rgb.png",
+        "90:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_4/090deg_rgb.png",
+        "180:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_4/180deg_rgb.png",
+        "270:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_4/270deg_rgb.png"
+      ],
+      "semantic": {
+        "room_type": "走廊",
+        "confidence": 0.949999988079071,
+        "description": "这是一张从低角度拍摄的室内走廊照片，地面铺有灰色地毯，墙壁为白色。走廊尽头有一扇双开门，门上方有绿色出口标志。左侧墙边放置着一个红色的消防箱，前景左侧地面上有一个白色的耳机。",
+        "objects": [
+          "耳机",
+          "消防箱",
+          "办公桌",
+          "椅子",
+          "门",
+          "储物架",
+          "垫子",
+          "灯具",
+          "背包"
+        ]
+      },
+      "capture_complete": true,
+      "capture_error": ""
+    },
+    {
+      "pose": {
+        "x": 14.626,
+        "y": -0.035
+      },
+      "status": "semantic_updated",
+      "node_id": 5,
+      "image_paths": [
+        "0:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_5/000deg_rgb.png",
+        "90:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_5/090deg_rgb.png",
+        "180:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_5/180deg_rgb.png",
+        "270:/home/jetson/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes/node_5/270deg_rgb.png"
+      ],
+      "semantic": {
+        "room_type": "走廊",
+        "confidence": 0.949999988079071,
+        "description": "这是一张走廊的图像，地面铺有灰色地毯，左侧有一个红色的消防箱，背景是一扇带有玻璃窗的白色双开门。",
+        "objects": [
+          "消防箱",
+          "门",
+          "踢脚线",
+          "海报/装饰物",
+          "垫子"
+        ]
+      },
+      "capture_complete": true,
+      "capture_error": ""
+    }
+  ],
+  "pending_count": 0
+}

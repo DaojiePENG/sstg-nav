@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Optional
 from pathlib import Path
 import networkx as nx
 import time
-from .topological_node import TopologicalNode, SemanticInfo
+from .topological_node import TopologicalNode, SemanticInfo, Viewpoint
 
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,7 @@ class TopologicalMap:
             x=x,
             y=y,
             theta=theta,
+            name=f"拓扑点{node_id}",
             created_time=time.time(),
             last_updated=time.time(),
         )
@@ -119,13 +120,34 @@ class TopologicalMap:
         if node_id not in self.nodes_dict:
             logger.warning(f"Node {node_id} not found")
             return False
-        
+
         node = self.nodes_dict[node_id]
         node.semantic_info = semantic_info
+        if not node.name or node.name.startswith('拓扑点'):
+            base_name = semantic_info.room_type_cn or node.name
+            node.name = self._unique_name(base_name, node_id)
         node.last_updated = time.time()
-        
+
         logger.info(f"Updated semantic info for node {node_id}: {semantic_info.room_type}")
         return True
+
+    def _unique_name(self, base_name: str, exclude_node_id: int = -1) -> str:
+        """Ensure node name is unique by appending a sequence number if needed.
+
+        e.g. 走廊 → 走廊, 走廊2, 走廊3 ...
+        """
+        existing = set()
+        for nid, n in self.nodes_dict.items():
+            if nid != exclude_node_id and n.name:
+                existing.add(n.name)
+
+        if base_name not in existing:
+            return base_name
+
+        seq = 2
+        while f'{base_name}{seq}' in existing:
+            seq += 1
+        return f'{base_name}{seq}'
     
     def add_panorama_image(self, node_id: int, angle: str, image_path: str) -> bool:
         """Add panorama image path for a specific angle."""
@@ -151,9 +173,18 @@ class TopologicalMap:
             List of node IDs matching the room type
         """
         matching_nodes = []
+        room_type_lower = room_type.strip().lower()
         for node_id, node in self.nodes_dict.items():
-            if node.semantic_info and node.semantic_info.room_type == room_type:
-                matching_nodes.append(node_id)
+            if not node.semantic_info:
+                continue
+
+            semantic = node.semantic_info
+            candidates = [semantic.room_type, semantic.room_type_cn, *semantic.aliases]
+            for candidate in candidates:
+                candidate_lower = candidate.lower()
+                if room_type_lower in candidate_lower or candidate_lower in room_type_lower:
+                    matching_nodes.append(node_id)
+                    break
         
         return matching_nodes
     
@@ -168,15 +199,65 @@ class TopologicalMap:
             List of node IDs containing the object
         """
         matching_nodes = []
+        object_lower = object_name.strip().lower()
         for node_id, node in self.nodes_dict.items():
             if node.semantic_info:
                 for obj in node.semantic_info.objects:
-                    if obj.name.lower() == object_name.lower():
+                    names = [obj.name, obj.name_cn]
+                    if any(
+                        object_lower in name.lower() or name.lower() in object_lower
+                        for name in names if name
+                    ):
                         matching_nodes.append(node_id)
                         break
         
         return matching_nodes
-    
+
+    def query_by_object_with_angles(self, object_name: str) -> List[Tuple[int, List[int]]]:
+        """
+        Query nodes containing a specific object, returning which angles matched.
+
+        Returns:
+            List of (node_id, [matching_angles]) tuples.
+            matching_angles contains the viewpoint angles where the object was found.
+            Empty angles list means the object was found at node-level only.
+        """
+        results = []
+        object_lower = object_name.strip().lower()
+
+        for node_id, node in self.nodes_dict.items():
+            matched_angles = []
+
+            # Search viewpoint-level first
+            for angle, vp in node.viewpoints.items():
+                if vp.semantic_info:
+                    for obj in vp.semantic_info.objects:
+                        names = [obj.name, obj.name_cn]
+                        if any(
+                            object_lower in name.lower() or name.lower() in object_lower
+                            for name in names if name
+                        ):
+                            matched_angles.append(angle)
+                            break
+
+            # Fallback: check node-level semantic (backward compat)
+            if not matched_angles and node.semantic_info:
+                for obj in node.semantic_info.objects:
+                    names = [obj.name, obj.name_cn]
+                    if any(
+                        object_lower in name.lower() or name.lower() in object_lower
+                        for name in names if name
+                    ):
+                        matched_angles = []  # empty = node-level match
+                        results.append((node_id, matched_angles))
+                        break
+                continue
+
+            if matched_angles:
+                results.append((node_id, sorted(matched_angles)))
+
+        return results
+
     def query_by_combined(self, room_type: Optional[str] = None, 
                          object_name: Optional[str] = None) -> List[int]:
         """
@@ -196,17 +277,12 @@ class TopologicalMap:
                 continue
             
             # Check room type
-            if room_type and node.semantic_info.room_type != room_type:
+            if room_type and node_id not in self.query_by_room_type(room_type):
                 continue
             
             # Check object
             if object_name:
-                found_object = False
-                for obj in node.semantic_info.objects:
-                    if obj.name.lower() == object_name.lower():
-                        found_object = True
-                        break
-                if not found_object:
+                if node_id not in self.query_by_object(object_name):
                     continue
             
             matching_nodes.append(node_id)
@@ -237,11 +313,11 @@ class TopologicalMap:
     def get_node_count(self) -> int:
         """Get total number of nodes."""
         return len(self.nodes_dict)
-    
+
     def get_edge_count(self) -> int:
         """Get total number of edges."""
         return self.graph.number_of_edges()
-    
+
     def save_to_file(self, file_path: str = None) -> bool:
         """
         Save topological map to JSON file.
@@ -258,17 +334,11 @@ class TopologicalMap:
             return False
         
         try:
-            data = {
-                'nodes': [node.to_dict() for node in self.nodes_dict.values()],
-                'edges': [
-                    {'from': u, 'to': v, 'weight': self.graph[u][v].get('weight', 0.0)}
-                    for u, v in self.graph.edges()
-                ],
-            }
+            data = self.to_dict()
             
             Path(target_file).parent.mkdir(parents=True, exist_ok=True)
-            with open(target_file, 'w') as f:
-                json.dump(data, f, indent=2)
+            with open(target_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
             
             logger.info(f"Saved topological map to {target_file}")
             return True
@@ -292,7 +362,7 @@ class TopologicalMap:
             return False
         
         try:
-            with open(target_file, 'r') as f:
+            with open(target_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
             # Clear existing data
@@ -311,8 +381,10 @@ class TopologicalMap:
             
             # Load edges
             for edge_data in data.get('edges', []):
-                from_id = edge_data['from']
-                to_id = edge_data['to']
+                from_id = edge_data.get('from', edge_data.get('source'))
+                to_id = edge_data.get('to', edge_data.get('target'))
+                if from_id is None or to_id is None:
+                    continue
                 weight = edge_data.get('weight', 0.0)
                 self.graph.add_edge(from_id, to_id, weight=weight)
             
@@ -325,9 +397,16 @@ class TopologicalMap:
     def to_dict(self) -> Dict:
         """Convert map to dictionary representation."""
         return {
-            'nodes': [node.to_dict() for node in self.nodes_dict.values()],
+            'nodes': [
+                node.to_dict() for node in sorted(
+                    self.nodes_dict.values(), key=lambda item: item.node_id)
+            ],
             'edges': [
-                {'from': u, 'to': v, 'weight': self.graph[u][v].get('weight', 0.0)}
+                {
+                    'source': u,
+                    'target': v,
+                    'weight': self.graph[u][v].get('weight', 0.0),
+                }
                 for u, v in self.graph.edges()
             ],
             'metadata': {

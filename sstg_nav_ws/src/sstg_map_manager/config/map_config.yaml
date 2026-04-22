@@ -1,10 +1,11 @@
 general:
-  map_file: '/tmp/topological_map.json'
+  maps_root: 'maps'           # 相对于 sstg_map_manager 包目录
+  active_map: 'lab_20260402'       # 当前活跃地图 session
   frame_id: 'map'
-  
+
 webui:
   host: '0.0.0.0'
   port: 8000
-  
+
 network:
   graph_type: 'DiGraph'  # Directed graph
