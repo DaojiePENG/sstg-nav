@@ -1,5 +1,4 @@
 #include "functions.h"
-#include <algorithm>
 
 
 // rdm class, for gentaring random flot numbers
@@ -61,7 +60,7 @@ x_new.push_back(  m*(x_new[0]-x_nearest[0])+x_nearest[1] );
 
 if(x_rand[0]==x_nearest[0]){
 x_new[0]=x_nearest[0];
-x_new[1]=x_nearest[1]+sign(x_rand[1]-x_nearest[1])*eta;
+x_new[1]=x_nearest[1]+eta;
 }
 
 
@@ -71,37 +70,22 @@ return x_new;
 }
 
 
-bool isInsideMap(const nav_msgs::msg::OccupancyGrid &mapData, const std::vector<float> &Xp){
-if (Xp.size() < 2 || mapData.data.empty()) { return false; }
 
-float resolution=mapData.info.resolution;
-float Xstartx=mapData.info.origin.position.x;
-float Xstarty=mapData.info.origin.position.y;
-int width=static_cast<int>(mapData.info.width);
-int height=static_cast<int>(mapData.info.height);
-
-int mx=static_cast<int>(floor((Xp[0]-Xstartx)/resolution));
-int my=static_cast<int>(floor((Xp[1]-Xstarty)/resolution));
-return mx>=0 && mx<width && my>=0 && my<height;
-}
 
 
 //gridValue function
 int gridValue(nav_msgs::msg::OccupancyGrid &mapData,std::vector<float> Xp){
-if (!isInsideMap(mapData, Xp)) {
-return 100;
-}
 
 float resolution=mapData.info.resolution;
 float Xstartx=mapData.info.origin.position.x;
 float Xstarty=mapData.info.origin.position.y;
 
-int width=static_cast<int>(mapData.info.width);
+float width=mapData.info.width;
 std::vector<signed char> Data=mapData.data;
 
-int indx=static_cast<int>((  floor((Xp[1]-Xstarty)/resolution)*width)+( floor((Xp[0]-Xstartx)/resolution) ));
+float indx=(  floor((Xp[1]-Xstarty)/resolution)*width)+( floor((Xp[0]-Xstartx)/resolution) );
 int out;
-out=Data[indx];
+out=Data[int(indx)];
 return out;
 }
 
@@ -112,24 +96,21 @@ return out;
 
 int ObstacleFree(std::vector<float> xnear, std::vector<float> &xnew, nav_msgs::msg::OccupancyGrid mapsub){
 float rez=float(mapsub.info.resolution)*.2;
-int stepz=std::max(1, int(ceil(Norm(xnew,xnear))/rez));
+float stepz=int(ceil(Norm(xnew,xnear))/rez);
 std::vector<float> xi=xnear;
-std::vector<float> last_free=xnear;
 int obs=0; int unk=0;
 
+geometry_msgs::msg::Point p;
 for (int c=0;c<stepz;c++){
   xi=Steer(xi,xnew,rez);
 
-   if (!isInsideMap(mapsub,xi)) { obs=1; break; }
 
-   int cell_value = gridValue(mapsub,xi);
-   if (cell_value >= 70){     obs=1; break; }
+   if (gridValue(mapsub,xi) ==100){     obs=1; }
 
-   if (cell_value ==-1){      unk=1;	xnew=last_free; break;}
-   last_free=xi;
+   if (gridValue(mapsub,xi) ==-1){      unk=1;	break;}
   }
 int out=0;
- if (!unk){ xnew=xi; }
+ xnew=xi;
  if (unk==1){  out=-1;}
 
  if (obs==1){  out=0;}
@@ -155,6 +136,8 @@ int out=0;
  
  
  
+
+
 
 
 

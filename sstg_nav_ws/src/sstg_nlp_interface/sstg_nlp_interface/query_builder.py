@@ -48,7 +48,6 @@ class QueryBuilder:
         'locate_object': 'object_localization',
         'query_info': 'information_query',
         'ask_direction': 'direction_query',
-        'explore_new_home': 'exploration_query',
     }
     
     def __init__(self, logger_func=None):
@@ -212,11 +211,9 @@ class QueryValidator:
         # 检查必要字段
         if not query.intent:
             errors.append("Missing intent")
-
-        # 纯对话/查询/探索意图不需要实体
-        if query.intent not in ('explore_new_home', 'chat', 'query_info', 'conversation', 'describe_scene', 'stop_task'):
-            if not query.entities and not query.target_locations and not query.target_objects:
-                errors.append("No entities or targets specified")
+        
+        if not query.entities and not query.target_locations and not query.target_objects:
+            errors.append("No entities or targets specified")
         
         # 检查置信度
         if query.confidence < 0.3:

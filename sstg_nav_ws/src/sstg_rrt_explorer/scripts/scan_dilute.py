@@ -20,7 +20,7 @@ class ScanCompression(Node):
         if not isinstance(data, LaserScan):
             return
         laser_scan = LaserScan()
-        laser_scan.header.stamp = data.header.stamp
+        laser_scan.header.stamp = self.get_clock().now().to_msg()
         laser_scan.header.frame_id = data.header.frame_id
         laser_scan.angle_increment = data.angle_increment * self.multiple
         laser_scan.time_increment = data.time_increment

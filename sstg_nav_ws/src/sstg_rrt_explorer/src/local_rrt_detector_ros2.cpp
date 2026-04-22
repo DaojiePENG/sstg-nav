@@ -18,7 +18,7 @@ public:
         this->declare_parameter("map_topic", "/map");
         this->declare_parameter("range", 5.0);
         this->declare_parameter("robot_frame", "base_link");
-        this->declare_parameter("max_tree_nodes", 500);
+        this->declare_parameter("max_tree_nodes", 250);
         this->declare_parameter("status_log_interval", 2.0);
 
         eta_ = this->get_parameter("eta").as_double();
@@ -54,9 +54,8 @@ public:
 
         initMarkers();
 
-        // Only need 1 clicked point as seed
-        RCLCPP_INFO(this->get_logger(), "Local RRT waiting for 1 clicked point...");
-        while (clicked_points_.size() < 1 && rclcpp::ok()) {
+        RCLCPP_INFO(this->get_logger(), "Local RRT waiting for 5 clicked points");
+        while (clicked_points_.size() < 5 && rclcpp::ok()) {
             points_.header.stamp = this->now();
             points_.points = clicked_points_;
             shapes_pub_->publish(points_);
@@ -64,11 +63,11 @@ public:
             rclcpp::sleep_for(std::chrono::milliseconds(50));
         }
 
-        initializeFromMap();
+        initializeSearchArea();
         if (updateRobotPose()) {
             resetTree(robot_x_, robot_y_);
         } else {
-            resetTree(clicked_points_[0].x, clicked_points_[0].y);
+            resetTree(clicked_points_[4].x, clicked_points_[4].y);
         }
 
         points_.points.clear();
@@ -78,7 +77,7 @@ public:
         initialized_ = true;
         last_status_log_ = this->now();
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(50),
+            std::chrono::milliseconds(20),
             std::bind(&LocalRRTDetector::rrtLoop, this));
 
         rclcpp::spin(this->shared_from_this());
@@ -117,32 +116,44 @@ private:
         points_.color.a = 1.0;
     }
 
-    // Derive search area from current map extent — auto-grow with SLAM
-    void updateSearchAreaFromMap()
+    void initializeSearchArea()
     {
-        if (mapData_.data.empty()) return;
+        const auto &seed = clicked_points_[4];
 
-        float ox = mapData_.info.origin.position.x;
-        float oy = mapData_.info.origin.position.y;
-        float rez = mapData_.info.resolution;
-        float w = static_cast<float>(mapData_.info.width) * rez;
-        float h = static_cast<float>(mapData_.info.height) * rez;
+        min_x_ = std::min({clicked_points_[0].x, clicked_points_[1].x, clicked_points_[2].x, clicked_points_[3].x});
+        max_x_ = std::max({clicked_points_[0].x, clicked_points_[1].x, clicked_points_[2].x, clicked_points_[3].x});
+        min_y_ = std::min({clicked_points_[0].y, clicked_points_[1].y, clicked_points_[2].y, clicked_points_[3].y});
+        max_y_ = std::max({clicked_points_[0].y, clicked_points_[1].y, clicked_points_[2].y, clicked_points_[3].y});
 
-        const double margin = std::max(eta_ * 2.0, 1.0);
-        min_x_ = static_cast<double>(ox) - margin;
-        max_x_ = static_cast<double>(ox + w) + margin;
-        min_y_ = static_cast<double>(oy) - margin;
-        max_y_ = static_cast<double>(oy + h) + margin;
-    }
+        min_x_ = std::min(min_x_, static_cast<double>(seed.x));
+        max_x_ = std::max(max_x_, static_cast<double>(seed.x));
+        min_y_ = std::min(min_y_, static_cast<double>(seed.y));
+        max_y_ = std::max(max_y_, static_cast<double>(seed.y));
 
-    void initializeFromMap()
-    {
-        updateSearchAreaFromMap();
+        const double margin = std::max(eta_ * 2.0, 0.5);
+        min_x_ -= margin;
+        max_x_ += margin;
+        min_y_ -= margin;
+        max_y_ += margin;
 
         RCLCPP_INFO(
             this->get_logger(),
-            "Local RRT initialized from map extent: bbox=[%.2f,%.2f]x[%.2f,%.2f], eta=%.2f, range=%.2f",
+            "Local RRT area initialized: bbox=[%.2f, %.2f] x [%.2f, %.2f], eta=%.2f, range=%.2f",
             min_x_, max_x_, min_y_, max_y_, eta_, range_);
+    }
+
+    void expandSearchArea(const geometry_msgs::msg::Point &p)
+    {
+        const double margin = std::max(eta_ * 2.0, 0.5);
+        min_x_ = std::min(min_x_, static_cast<double>(p.x)) - margin;
+        max_x_ = std::max(max_x_, static_cast<double>(p.x)) + margin;
+        min_y_ = std::min(min_y_, static_cast<double>(p.y)) - margin;
+        max_y_ = std::max(max_y_, static_cast<double>(p.y)) + margin;
+
+        RCLCPP_INFO(
+            this->get_logger(),
+            "Local RRT area expanded by clicked point: bbox=[%.2f, %.2f] x [%.2f, %.2f], clicked=(%.2f, %.2f)",
+            min_x_, max_x_, min_y_, max_y_, p.x, p.y);
     }
 
     bool updateRobotPose()
@@ -190,10 +201,6 @@ private:
     void mapCallback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
     {
         mapData_ = *msg;
-        // Auto-grow search area as SLAM expands the map
-        if (initialized_) {
-            updateSearchAreaFromMap();
-        }
     }
 
     void clickedCallback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
@@ -203,13 +210,16 @@ private:
         p.y = msg->point.y;
         p.z = msg->point.z;
 
-        if (!initialized_) {
-            if (clicked_points_.empty()) {
-                clicked_points_.push_back(p);
-            }
+        if (initialized_) {
+            expandSearchArea(p);
             return;
         }
-        // After init, additional clicks are ignored (area auto-grows with map)
+
+        if (clicked_points_.size() >= 5) {
+            return;
+        }
+
+        clicked_points_.push_back(p);
     }
 
     void rrtLoop()
@@ -231,11 +241,6 @@ private:
         }
 
         std::vector<float> x_rand, x_nearest, x_new;
-
-        const int batch = 8;
-        for (int b = 0; b < batch; ++b) {
-        x_rand.clear(); x_nearest.clear(); x_new.clear();
-
         float xr = static_cast<float>((random_gen_() * range_ * 2.0) - range_ + robot_x_);
         float yr = static_cast<float>((random_gen_() * range_ * 2.0) - range_ + robot_y_);
         xr = std::max(static_cast<float>(min_x_), std::min(static_cast<float>(max_x_), xr));
@@ -286,10 +291,6 @@ private:
         else {
             ++obstacle_count_;
         }
-
-        if (checking == -1) break;
-
-        } // end batch loop
 
         line_.header.stamp = this->now();
         shapes_pub_->publish(line_);

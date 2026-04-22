@@ -21,11 +21,7 @@ class CandidatePoint:
     distance_score: float   # 距离得分
     accessibility_score: float  # 可达性得分
     match_reason: str
-    evidence_score: float = 0.0  # 目标证据分（支持角度/显著性/可见性）
-    best_view_angle: int = -1
-    supporting_angles: List[int] = field(default_factory=list)
-    distance_hint: str = 'unknown'  # near/mid/far/unknown，供交互层做远距离置信度降权
-
+    
     def to_dict(self) -> Dict:
         """转换为字典"""
         return {
@@ -35,13 +31,9 @@ class CandidatePoint:
             'room_type': self.room_type,
             'relevance_score': self.relevance_score,
             'semantic_score': self.semantic_score,
-            'evidence_score': self.evidence_score,
             'distance_score': self.distance_score,
             'accessibility_score': self.accessibility_score,
-            'match_reason': self.match_reason,
-            'best_view_angle': self.best_view_angle,
-            'supporting_angles': self.supporting_angles,
-            'distance_hint': self.distance_hint,
+            'match_reason': self.match_reason
         }
 
 
@@ -109,24 +101,15 @@ class CandidateGenerator:
             
             # 计算多维度得分
             semantic_score = match_result.match_score
-            search_meta = getattr(match_result, 'search_meta', {}) or {}
-            evidence_score = self._calculate_evidence_score(search_meta, semantic_score)
             distance_score = self._calculate_distance_score(current_pose, (pose_x, pose_y, pose_z))
             accessibility_score = self._calculate_accessibility_score(node_info)
             
             # 计算综合得分 (加权平均)
-            if search_meta:
-                relevance_score = (
-                    evidence_score * 0.7 +
-                    distance_score * 0.2 +
-                    accessibility_score * 0.1
-                )
-            else:
-                relevance_score = (
-                    semantic_score * 0.5 +
-                    distance_score * 0.3 +
-                    accessibility_score * 0.2
-                )
+            relevance_score = (
+                semantic_score * 0.5 +      # 语义匹配最重要
+                distance_score * 0.3 +       # 距离次之
+                accessibility_score * 0.2    # 可达性
+            )
             
             candidate = CandidatePoint(
                 node_id=node_id,
@@ -137,13 +120,9 @@ class CandidateGenerator:
                 room_type=node_info.get('room_type', 'unknown'),
                 relevance_score=relevance_score,
                 semantic_score=semantic_score,
-                evidence_score=evidence_score,
                 distance_score=distance_score,
                 accessibility_score=accessibility_score,
-                match_reason=match_result.match_reason,
-                best_view_angle=search_meta.get('best_view_angle', -1),
-                supporting_angles=list(search_meta.get('supporting_angles', [])),
-                distance_hint=(search_meta.get('distance_hint', 'unknown') or 'unknown').lower(),
+                match_reason=match_result.match_reason
             )
             
             candidates.append(candidate)
@@ -171,29 +150,6 @@ class CandidateGenerator:
         self._log(f"生成 {len(result)} 个候选点 (共 {len(candidates)} 个，{len(unique_candidates)} 个去重后)")
         
         return result
-
-    def _calculate_evidence_score(self, search_meta: Dict, semantic_score: float) -> float:
-        if not search_meta:
-            return semantic_score
-        best_view_score = float(search_meta.get('best_view_score', 0.0) or 0.0)
-        best_confidence = float(search_meta.get('best_confidence', 0.0) or 0.0)
-        salience = float(search_meta.get('salience', 0.0) or 0.0)
-        visibility = (search_meta.get('visibility', 'unknown') or 'unknown').lower()
-        distance_hint = (search_meta.get('distance_hint', 'unknown') or 'unknown').lower()
-        supporting_angles = search_meta.get('supporting_angles', []) or []
-
-        visibility_score = {'full': 1.0, 'partial': 0.7, 'occluded': 0.35}.get(visibility, 0.55)
-        distance_score = {'near': 1.0, 'mid': 0.65, 'far': 0.3}.get(distance_hint, 0.55)
-        angle_support = min(1.0, 0.25 * len(supporting_angles) + 0.15)
-
-        return (
-            semantic_score * 0.35 +
-            best_view_score * 0.25 +
-            best_confidence * 0.15 +
-            salience * 0.10 +
-            angle_support * 0.10 +
-            ((visibility_score + distance_score) / 2.0) * 0.05
-        )
     
     def _calculate_distance_score(self,
                                  current_pose: Optional[Tuple],

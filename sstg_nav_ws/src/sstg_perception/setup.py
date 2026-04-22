@@ -24,6 +24,7 @@ setup(
         'std_msgs',
         'geometry_msgs',
         'sensor_msgs',
+        'cv_bridge',
         'opencv-python>=4.5.0',
         'numpy>=1.20.0',
         'requests>=2.28.0',

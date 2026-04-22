@@ -24,23 +24,13 @@ class SemanticObject:
     position: str
     quantity: int
     confidence: float
-    name_cn: str = ""
-    distance_hint: str = "unknown"
-    salience: float = 0.5
-    visibility: str = "unknown"
-    image_region: str = "mixed"
     
     def to_dict(self) -> Dict:
         return {
             'name': self.name,
-            'name_cn': self.name_cn,
             'position': self.position,
             'quantity': self.quantity,
-            'confidence': self.confidence,
-            'distance_hint': self.distance_hint,
-            'salience': self.salience,
-            'visibility': self.visibility,
-            'image_region': self.image_region,
+            'confidence': self.confidence
         }
 
 
@@ -172,18 +162,13 @@ class SemanticExtractor:
         if not isinstance(obj_data, dict):
             raise ValueError('Object data is not a dictionary')
         
-        name = str(obj_data.get('name', obj_data.get('name_cn', 'unknown'))).strip()
+        name = str(obj_data.get('name', 'unknown')).strip()
         if not name:
             raise ValueError('Object name is empty')
-
-        name_cn = str(obj_data.get('name_cn', '')).strip()
+        
         position = str(obj_data.get('position', 'center')).strip().lower()
         quantity = int(obj_data.get('quantity', 1))
         confidence = float(obj_data.get('confidence', 0.5))
-        distance_hint = str(obj_data.get('distance_hint', 'unknown')).strip().lower()
-        salience = max(0.0, min(1.0, float(obj_data.get('salience', 0.5))))
-        visibility = str(obj_data.get('visibility', 'unknown')).strip().lower()
-        image_region = str(obj_data.get('image_region', 'mixed')).strip().lower()
         
         # 验证
         if quantity <= 0:
@@ -193,14 +178,9 @@ class SemanticExtractor:
         
         return SemanticObject(
             name=name,
-            name_cn=name_cn,
             position=position,
             quantity=quantity,
-            confidence=confidence,
-            distance_hint=distance_hint if distance_hint in {'near', 'mid', 'far'} else 'unknown',
-            salience=salience,
-            visibility=visibility if visibility in {'full', 'partial', 'occluded'} else 'unknown',
-            image_region=image_region or 'mixed',
+            confidence=confidence
         )
     
     def merge_semantic_infos(self, infos: List[SemanticInfo],

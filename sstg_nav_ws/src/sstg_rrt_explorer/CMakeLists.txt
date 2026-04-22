@@ -45,14 +45,6 @@ install(PROGRAMS
   scripts/frontier_opencv_detector_ros2.py
   scripts/rrt_trace_manager.py
   scripts/trace_replay.py
-  scripts/auto_node_placer.py
-  scripts/collect_clicked_points.py
-  scripts/click_and_capture.py
-  scripts/visualize_node_positions.py
-  scripts/node_semantic_collector.py
-  scripts/find_and_navigate.py
-  scripts/topo_node_viz.py
-  scripts/exploration_action_server.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -1,7 +1,5 @@
 string text_input
 string context
-string session_id
-string sender_name
 ---
 bool success
 string query_json

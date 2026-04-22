@@ -2,6 +2,5 @@ string query
 ---
 int32[] node_ids
 sstg_msgs/SemanticData[] semantics
-int32[] matched_angles
 bool success
 string message
