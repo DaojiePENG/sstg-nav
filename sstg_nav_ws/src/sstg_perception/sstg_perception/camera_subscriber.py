@@ -4,13 +4,53 @@ ROS2 相机订阅器 - RGB-D 图像捕获
 
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from collections import deque
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 import threading
+import time
+
+
+def ros_image_to_cv2(msg: Image, desired_encoding: str = 'passthrough') -> np.ndarray:
+    """
+    纯 numpy 实现的 sensor_msgs/Image → OpenCV 转换。
+    替代 cv_bridge.CvBridge.imgmsg_to_cv2()，避免 NumPy 2.x 兼容问题。
+    """
+    encoding = msg.encoding.lower()
+
+    # 确定 dtype 和 channels
+    if encoding in ('bgr8', 'rgb8', '8uc3'):
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
+    elif encoding in ('bgra8', 'rgba8', '8uc4'):
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 4)
+    elif encoding in ('mono8', '8uc1'):
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width)
+    elif encoding in ('16uc1', 'mono16'):
+        img = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.width)
+    elif encoding in ('32fc1',):
+        img = np.frombuffer(msg.data, dtype=np.float32).reshape(msg.height, msg.width)
+    else:
+        # 默认按 bgr8
+        img = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
+
+    # 根据 desired_encoding 转换
+    if desired_encoding == 'passthrough':
+        return img.copy()
+    elif desired_encoding == 'bgr8':
+        if encoding == 'rgb8':
+            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        elif encoding == 'rgba8':
+            return cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+        elif encoding == 'bgra8':
+            return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        elif encoding in ('mono8', '8uc1'):
+            return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        return img.copy()
+
+    return img.copy()
 
 
 class CameraSubscriber(Node):
@@ -34,18 +74,24 @@ class CameraSubscriber(Node):
             image_buffer_size: 图像缓冲区大小
         """
         super().__init__('camera_subscriber')
-        
+
         self.rgb_topic = rgb_topic
         self.depth_topic = depth_topic
-        self.bridge = CvBridge()
         
         self.rgb_image = None
         self.depth_image = None
+        self.rgb_stamp_ns = 0
+        self.depth_stamp_ns = 0
+        self.rgb_seq = 0
+        self.depth_seq = 0
         self.rgb_buffer = deque(maxlen=image_buffer_size)
         self.depth_buffer = deque(maxlen=image_buffer_size)
         
         self.lock = threading.Lock()
         self.callbacks = []
+        self._bg_executor = None
+        self.spin_thread = None
+        self._spinning = False
         
         # 订阅相机话题 - 使用RELIABLE QoS以匹配相机发布者
         qos_profile = rclpy.qos.QoSProfile(
@@ -78,9 +124,11 @@ class CameraSubscriber(Node):
     def _rgb_callback(self, msg: Image) -> None:
         """RGB 图像回调"""
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            cv_image = ros_image_to_cv2(msg, desired_encoding='bgr8')
             with self.lock:
                 self.rgb_image = cv_image
+                self.rgb_stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+                self.rgb_seq += 1
                 self.rgb_buffer.append(cv_image.copy())
             
             for callback in self.callbacks:
@@ -92,9 +140,11 @@ class CameraSubscriber(Node):
     def _depth_callback(self, msg: Image) -> None:
         """深度图回调"""
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+            cv_image = ros_image_to_cv2(msg, desired_encoding='passthrough')
             with self.lock:
                 self.depth_image = cv_image
+                self.depth_stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+                self.depth_seq += 1
                 self.depth_buffer.append(cv_image.copy())
                 
         except Exception as e:
@@ -116,6 +166,16 @@ class CameraSubscriber(Node):
             rgb = self.rgb_image.copy() if self.rgb_image is not None else None
             depth = self.depth_image.copy() if self.depth_image is not None else None
         return rgb, depth
+
+    def get_frame_state(self) -> Tuple[int, int, int, int]:
+        """获取当前 RGB/Depth 帧序号与时间戳。"""
+        with self.lock:
+            return (
+                self.rgb_seq,
+                self.depth_seq,
+                self.rgb_stamp_ns,
+                self.depth_stamp_ns,
+            )
     
     def register_callback(self, callback: Callable) -> None:
         """注册图像获取回调"""
@@ -125,20 +185,50 @@ class CameraSubscriber(Node):
         """检查是否已收到图像"""
         with self.lock:
             return self.rgb_image is not None and self.depth_image is not None
-    
+
+    def has_publishers(self) -> bool:
+        """检查 RGB/Depth 话题是否仍有发布者。"""
+        rgb_publishers = self.get_publishers_info_by_topic(self.rgb_topic)
+        depth_publishers = self.get_publishers_info_by_topic(self.depth_topic)
+        return len(rgb_publishers) > 0 and len(depth_publishers) > 0
+
+    def start_background_spin(self) -> None:
+        """在后台线程持续处理相机消息。"""
+        if self._spinning:
+            return
+
+        self._bg_executor = SingleThreadedExecutor()
+        self._bg_executor.add_node(self)
+        self._spinning = True
+
+        def _run():
+            while self._spinning and rclpy.ok():
+                self._bg_executor.spin_once(timeout_sec=0.1)
+
+        self.spin_thread = threading.Thread(target=_run, daemon=True)
+        self.spin_thread.start()
+
+    def wait_for_new_frames(self,
+                            min_rgb_seq: int,
+                            min_depth_seq: int,
+                            timeout: float = 3.0) -> bool:
+        """等待比指定序号更新的一对图像。"""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            with self.lock:
+                if self.rgb_seq > min_rgb_seq and self.depth_seq > min_depth_seq:
+                    return True
+            time.sleep(0.02)
+        return False
+
     def wait_for_images(self, timeout: float = 10.0) -> bool:
         """等待第一次接收图像"""
-        import time
-
-        # 给节点一点时间建立订阅连接
         self.get_logger().info('Waiting for subscriptions to establish...')
         time.sleep(0.5)
 
         start_time = time.time()
         check_count = 0
         while time.time() - start_time < timeout:
-            # 核心修复：处理 ROS2 消息，让回调被触发
-            rclpy.spin_once(self, timeout_sec=0.1)
             check_count += 1
 
             if check_count % 10 == 0:
@@ -152,11 +242,28 @@ class CameraSubscriber(Node):
                 self.get_logger().info('Images received!')
                 return True
 
+            time.sleep(0.05)
+
         self.get_logger().warn(
             f'Timeout waiting for images after {timeout}s. '
             f'RGB: {self.rgb_image is not None}, Depth: {self.depth_image is not None}'
         )
         return False
+
+    def stop_background_spin(self) -> None:
+        """停止后台线程。"""
+        self._spinning = False
+        if self.spin_thread and self.spin_thread.is_alive():
+            self.spin_thread.join(timeout=1.0)
+        if self._bg_executor:
+            self._bg_executor.remove_node(self)
+            self._bg_executor.shutdown()
+        self._bg_executor = None
+        self.spin_thread = None
+
+    def destroy_node(self):
+        self.stop_background_spin()
+        super().destroy_node()
 
 
 def main(args=None):

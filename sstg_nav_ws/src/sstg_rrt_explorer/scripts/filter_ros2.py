@@ -10,7 +10,7 @@ from geometry_msgs.msg import Point, PointStamped
 from nav_msgs.msg import OccupancyGrid
 from tf2_ros import Buffer, TransformListener
 import tf2_geometry_msgs  # noqa: F401
-from functions_ros2 import gridValue, informationGain
+from functions_ros2 import gridValue, informationGain, point_in_map
 from sklearn.cluster import MeanShift
 from sstg_msgs.msg import PointArray
 
@@ -105,6 +105,10 @@ class FilterNode(Node):
                 transformed = self.tf_buffer.transform(data, self.mapData.header.frame_id)
 
             x = np.array([[transformed.point.x, transformed.point.y]], dtype=float)
+            if not point_in_map(self.mapData, x[0]):
+                return
+            if gridValue(self.mapData, x[0]) != 0:
+                return
             if len(self.frontiers) > 0:
                 distances = np.linalg.norm(self.frontiers - x[0], axis=1)
                 if np.min(distances) < self.min_frontier_separation:
@@ -235,11 +239,17 @@ class FilterNode(Node):
                     else:
                         transformed = self.tf_buffer.transform(temp_point, global_map.header.frame_id)
                         x = np.array([transformed.point.x, transformed.point.y], dtype=float)
+                    if not point_in_map(self.mapData, [centroids[z][0], centroids[z][1]]):
+                        cond = True
+                        break
+                    if gridValue(self.mapData, [centroids[z][0], centroids[z][1]]) != 0:
+                        cond = True
+                        break
                     cond = (gridValue(global_map, x) > self.costmap_clearing_threshold) or cond
                 except Exception:
                     pass
 
-            if cond or informationGain(self.mapData, [centroids[z][0], centroids[z][1]], self.info_radius * 0.5) < 0.2:
+            if cond or informationGain(self.mapData, [centroids[z][0], centroids[z][1]], self.info_radius * 0.5) < 0.05:
                 centroids = np.delete(centroids, z, axis=0)
                 z -= 1
             z += 1

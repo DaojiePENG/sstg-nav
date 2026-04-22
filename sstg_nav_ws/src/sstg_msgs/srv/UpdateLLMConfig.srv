@@ -1,0 +1,6 @@
+string base_url
+string api_key
+string model
+---
+bool success
+string message

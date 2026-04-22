@@ -184,7 +184,7 @@
 **启动方式**：
 ```bash
 # 环境变量方式（推荐）
-export DASHSCOPE_API_KEY="sk-942e8661f10f492280744a26fe7b953b"
+export DASHSCOPE_API_KEY="sk-************53b"
 ros2 launch sstg_perception perception.launch.py
 
 # 集成 Gemini 336L 相机启动
@@ -338,7 +338,7 @@ struct Command {
 
 **阿里云百炼API配置**：
 ```yaml
-API_KEY: sk-942e8661f10f492280744a26fe7b953b
+API_KEY: sk-************53b
 BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
 VLM_MODEL: qwen-vl-plus
 MULTIMODAL_MODEL: qwen-omni-flash

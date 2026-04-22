@@ -4,3 +4,4 @@ float32 progress
 geometry_msgs/Pose current_pose
 string error_message
 float32 distance_to_target
+float32 estimated_time_remaining

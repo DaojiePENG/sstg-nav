@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSTG UI 架构 + 后端接口全景图</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --panel: rgba(255, 252, 247, 0.86);
+      --ink: #1e2430;
+      --muted: #5e6675;
+      --line: rgba(30, 36, 48, 0.18);
+      --accent: #0f6c5a;
+      --accent-2: #d96c3f;
+      --warn: #c53b2c;
+      --ok: #2d7a46;
+      --soft-green: #dceee5;
+      --soft-orange: #f7dfd1;
+      --soft-blue: #dce9f5;
+      --soft-red: #f5d9d7;
+      --soft-purple: #e8ddf5;
+      --soft-yellow: #f5edd4;
+      --shadow: 0 18px 45px rgba(46, 42, 36, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(217, 108, 63, 0.15), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(15, 108, 90, 0.12), transparent 32%),
+        linear-gradient(135deg, #f8f3eb 0%, #f3ebe0 48%, #efe7dc 100%);
+      padding: 24px;
+    }
+    .shell {
+      max-width: 1600px; margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.55);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .hero {
+      padding: 28px 32px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(15,108,90,0.06), rgba(217,108,63,0.06));
+    }
+    .hero h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; }
+    .hero p { color: var(--muted); font-size: 14px; line-height: 1.65; max-width: 1000px; margin-top: 8px; }
+
+    /* ── 工具栏 ── */
+    .toolbar {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      padding: 16px 32px 8px;
+    }
+    .toggle {
+      display: inline-flex; background: rgba(255,255,255,0.9);
+      border: 1px solid var(--line); border-radius: 999px; padding: 4px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+    }
+    .toggle button {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 9px 16px; border-radius: 999px; cursor: pointer;
+      font-size: 13px; font-weight: 700; transition: all 140ms ease;
+      white-space: nowrap;
+    }
+    .toggle button.active { background: var(--ink); color: white; }
+    .legend {
+      display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px;
+    }
+    .legend span {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.72); border: 1px solid var(--line);
+      border-radius: 999px; padding: 6px 11px;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+    /* ── 主体布局 ── */
+    .main {
+      display: grid; grid-template-columns: 1.85fr 1fr; gap: 0; min-height: 900px;
+    }
+    .viz-wrap {
+      position: relative; border-right: 1px solid var(--line); overflow: hidden;
+      background:
+        linear-gradient(rgba(30,36,48,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,36,48,0.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+
+    /* ── SVG 节点 ── */
+    svg { width: 100%; height: 100%; display: block; }
+    .node { transition: opacity 180ms ease; cursor: pointer; }
+    .node rect { stroke: rgba(34,40,52,0.16); stroke-width: 1.1; rx: 16; ry: 16; }
+    .node:hover rect { stroke: rgba(34,40,52,0.36); stroke-width: 2; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08)); }
+    .node.selected rect { stroke: var(--accent); stroke-width: 2.5; filter: drop-shadow(0 4px 16px rgba(15,108,90,0.2)); }
+    .node-title { font-size: 14px; font-weight: 800; fill: var(--ink); }
+    .node-sub { font-size: 11px; fill: var(--muted); }
+    .group-label { font-size: 13px; font-weight: 800; fill: #324055; }
+    .group-box {
+      fill: rgba(255,255,255,0.28); stroke: rgba(30,36,48,0.1);
+      stroke-width: 1.1; stroke-dasharray: 7 6; rx: 22; ry: 22;
+    }
+    .edge {
+      fill: none; stroke-width: 2.6; stroke-linecap: round; opacity: 0.88;
+    }
+    .edge-anim {
+      fill: none; stroke-width: 1.4; stroke-linecap: round;
+      stroke-dasharray: 8 10; animation: dash 1.4s linear infinite;
+    }
+    .edge-label {
+      font-size: 10px; fill: var(--muted); font-weight: 700;
+      paint-order: stroke; stroke: rgba(255,255,255,0.9); stroke-width: 3;
+    }
+    @keyframes dash { to { stroke-dashoffset: -36; } }
+
+    .state-hidden { opacity: 0; pointer-events: none; position: absolute; }
+    .state-visible { opacity: 1; pointer-events: auto; }
+
+    /* ── 右侧面板 ── */
+    .panel {
+      padding: 20px; display: flex; flex-direction: column; gap: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0.55));
+      overflow-y: auto; max-height: 920px;
+    }
+    .card {
+      background: rgba(255,255,255,0.82); border: 1px solid var(--line);
+      border-radius: 18px; padding: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+    }
+    .card h2 { font-size: 15px; margin-bottom: 8px; }
+    .card p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .card-tag {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      border-radius: 999px; padding: 5px 10px; margin-top: 8px;
+    }
+    .tag-green { background: var(--soft-green); color: #205433; }
+    .tag-blue { background: var(--soft-blue); color: #1d4565; }
+    .tag-orange { background: var(--soft-orange); color: #6e371f; }
+    .tag-red { background: var(--soft-red); color: #8c2419; }
+    .tag-purple { background: var(--soft-purple); color: #4a2d6e; }
+
+    /* ── 接口表格 ── */
+    .api-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .api-table th {
+      text-align: left; padding: 6px 8px; background: rgba(30,36,48,0.05);
+      border-bottom: 1px solid var(--line); font-weight: 700; color: var(--muted);
+    }
+    .api-table td {
+      padding: 5px 8px; border-bottom: 1px solid rgba(30,36,48,0.06);
+      color: var(--ink); vertical-align: top;
+    }
+    .api-table code {
+      background: rgba(30,36,48,0.06); padding: 1px 5px; border-radius: 4px;
+      font-size: 11px; font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .api-table .method {
+      display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 6px;
+      border-radius: 4px; min-width: 36px; text-align: center;
+    }
+    .m-get { background: var(--soft-green); color: #205433; }
+    .m-post { background: var(--soft-blue); color: #1d4565; }
+    .m-put { background: var(--soft-orange); color: #6e371f; }
+    .m-del { background: var(--soft-red); color: #8c2419; }
+    .m-sub { background: var(--soft-purple); color: #4a2d6e; }
+    .m-srv { background: var(--soft-yellow); color: #5e4a1a; }
+
+    /* ── 节点详情悬浮卡 ── */
+    .detail-card {
+      background: rgba(255,255,255,0.95); border: 1px solid var(--line);
+      border-radius: 18px; padding: 18px; box-shadow: 0 14px 36px rgba(0,0,0,0.08);
+    }
+    .detail-card h3 { font-size: 16px; margin-bottom: 6px; }
+    .detail-card .desc { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 10px; }
+    .detail-card .file-path {
+      display: block; padding: 8px 10px; border-radius: 10px;
+      background: rgba(30,36,48,0.05); font-size: 11px; font-family: monospace;
+      color: var(--ink); margin-bottom: 8px; overflow-wrap: anywhere;
+    }
+    .detail-list { list-style: none; padding: 0; }
+    .detail-list li {
+      padding: 4px 0; font-size: 12px; color: var(--ink);
+      border-bottom: 1px solid rgba(30,36,48,0.05);
+    }
+    .detail-list li:last-child { border: 0; }
+    .detail-list .label { color: var(--muted); font-weight: 700; display: inline-block; min-width: 60px; }
+
+    .footer { padding: 10px 24px 20px; color: var(--muted); font-size: 11px; }
+
+    @media (max-width: 1180px) {
+      .main { grid-template-columns: 1fr; }
+      .viz-wrap { border-right: 0; border-bottom: 1px solid var(--line); min-height: 700px; }
+      .panel { max-height: none; }
+    }
+    @media (max-width: 780px) {
+      body { padding: 10px; }
+      .hero, .toolbar, .panel, .footer { padding-left: 14px; padding-right: 14px; }
+      .hero h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="hero">
+    <h1>SSTG-Nav UI 架构 + 后端接口全景图</h1>
+    <p>
+      展示 SSTG-Nav Web 前端的模块组成、数据流向、与 ROS2 后端的全部接口。
+      点击图中任意节点查看详情。切换视图查看不同层面的架构。
+    </p>
+  </div>
+
+  <div class="toolbar">
+    <div class="toggle" role="tablist">
+      <button id="btn-overview" class="active" type="button">UI 模块总览</button>
+      <button id="btn-dataflow" type="button">数据流 + 接口</button>
+      <button id="btn-backend" type="button">后端对接</button>
+    </div>
+    <div class="legend" id="legend-area">
+      <span><i class="dot" style="background:#3b82f6"></i> 前端组件</span>
+      <span><i class="dot" style="background:#0f6c5a"></i> Vite Server</span>
+      <span><i class="dot" style="background:#d96c3f"></i> ROS2 后端</span>
+      <span><i class="dot" style="background:#7c3aed"></i> 状态管理</span>
+      <span><i class="dot" style="background:#dc2626"></i> 外部服务</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="viz-wrap">
+
+      <!-- ════════ SCENE 1: UI 模块总览 ════════ -->
+      <svg id="scene-overview" class="state-visible" viewBox="0 0 1100 900" xmlns="http://www.w3.org/2000/svg">
+        <!-- 分组框 -->
+        <rect class="group-box" x="30" y="30" width="330" height="840" />
+        <text class="group-label" x="50" y="58">浏览器 (React SPA)</text>
+        <rect class="group-box" x="400" y="30" width="300" height="840" />
+        <text class="group-label" x="420" y="58">Vite Dev Server (Node.js)</text>
+        <rect class="group-box" x="740" y="30" width="330" height="840" />
+        <text class="group-label" x="760" y="58">ROS2 后端</text>
+
+        <!-- 前端组件 -->
+        <g class="node" data-id="app" transform="translate(50,80)">
+          <rect width="290" height="72" fill="#dce9f5" />
+          <text class="node-title" x="16" y="30">App.tsx — App Shell</text>
+          <text class="node-sub" x="16" y="50">路由 / 认证门禁 / 电源按钮 / 自动连接</text>
+        </g>
+        <g class="node" data-id="chatview" transform="translate(50,176)">
+          <rect width="290" height="88" fill="#dce9f5" />
+          <text class="node-title" x="16" y="28">ChatView.tsx (1544 行)</text>
+          <text class="node-sub" x="16" y="48">三模式切换: chat / navigate / explore</text>
+          <text class="node-sub" x="16" y="66">LLM 流式 + 图片上传 + 任务队列 + 语音</text>
+        </g>
+        <g class="node" data-id="mapview" transform="translate(50,288)">
+          <rect width="290" height="88" fill="#dce9f5" />
+          <text class="node-title" x="16" y="28">MapView.tsx (707 行)</text>
+          <text class="node-sub" x="16" y="48">Three.js 3D 全息地图 + 拓扑节点</text>
+          <text class="node-sub" x="16" y="66">机器人位姿 + 实时地图 + 全景画廊</text>
+        </g>
+        <g class="node" data-id="robotview" transform="translate(50,400)">
+          <rect width="290" height="72" fill="#dce9f5" />
+          <text class="node-title" x="16" y="28">RobotView.tsx (337 行)</text>
+          <text class="node-sub" x="16" y="50">模式切换 / 硬件状态 / CPU/RAM / 日志</text>
+        </g>
+
+        <!-- Zustand Stores -->
+        <g class="node" data-id="rosstore" transform="translate(50,510)">
+          <rect width="290" height="72" fill="#e8ddf5" />
+          <text class="node-title" x="16" y="28">rosStore.ts (367 行)</text>
+          <text class="node-sub" x="16" y="50">ROS 连接 + 5 Topics 订阅 + 7 Services</text>
+        </g>
+        <g class="node" data-id="chatstore" transform="translate(50,606)">
+          <rect width="290" height="72" fill="#e8ddf5" />
+          <text class="node-title" x="16" y="28">chatStore.ts (537 行)</text>
+          <text class="node-sub" x="16" y="50">会话/消息/LLM 配置 + SSE 同步</text>
+        </g>
+        <g class="node" data-id="mapstore" transform="translate(50,702)">
+          <rect width="290" height="72" fill="#e8ddf5" />
+          <text class="node-title" x="16" y="28">mapStore.ts (123 行)</text>
+          <text class="node-sub" x="16" y="50">多地图管理 + 校准 + localStorage</text>
+        </g>
+        <g class="node" data-id="hooks" transform="translate(50,798)">
+          <rect width="290" height="56" fill="#e8ddf5" />
+          <text class="node-title" x="16" y="24">useVoiceInput + pgm3DParser</text>
+          <text class="node-sub" x="16" y="42">语音识别 Hook + PGM→3D 转换</text>
+        </g>
+
+        <!-- Vite Server 插件 -->
+        <g class="node" data-id="chatsync" transform="translate(420,80)">
+          <rect width="260" height="220" fill="#dceee5" />
+          <text class="node-title" x="16" y="28">chatSyncPlugin</text>
+          <text class="node-title" x="16" y="48">(1493 行 — 核心)</text>
+          <text class="node-sub" x="16" y="74">REST API: 会话 CRUD + 消息</text>
+          <text class="node-sub" x="16" y="92">SSE 实时广播 (多端同步)</text>
+          <text class="node-sub" x="16" y="110">LLM 流式代理 (OpenAI 兼容)</text>
+          <text class="node-sub" x="16" y="128">图片检索 (拓扑语义搜索)</text>
+          <text class="node-sub" x="16" y="146">图片标注 (VLM + Sharp)</text>
+          <text class="node-sub" x="16" y="164">多模态适配 (Gemini/Qwen-VL)</text>
+          <text class="node-sub" x="16" y="182">LLM 配置管理 (服务端持久化)</text>
+          <text class="node-sub" x="16" y="200">JSON 文件持久化 ~/sstg-data/</text>
+        </g>
+        <g class="node" data-id="llmproxy" transform="translate(420,324)">
+          <rect width="260" height="64" fill="#dceee5" />
+          <text class="node-title" x="16" y="26">llmProxyPlugin</text>
+          <text class="node-sub" x="16" y="46">LLM API CORS 代理 (诊断用)</text>
+        </g>
+        <g class="node" data-id="launcher" transform="translate(420,412)">
+          <rect width="260" height="88" fill="#dceee5" />
+          <text class="node-title" x="16" y="26">backendLauncherPlugin</text>
+          <text class="node-sub" x="16" y="46">ROS2 后端进程管理</text>
+          <text class="node-sub" x="16" y="64">三层防护: 优雅关闭 / 清理残留 / 强杀</text>
+        </g>
+        <g class="node" data-id="static" transform="translate(420,524)">
+          <rect width="260" height="64" fill="#dceee5" />
+          <text class="node-title" x="16" y="26">Vite Static Server</text>
+          <text class="node-sub" x="16" y="46">public/ 地图 + 全景图 + PWA</text>
+        </g>
+        <g class="node" data-id="datadir" transform="translate(420,612)">
+          <rect width="260" height="80" fill="#f5edd4" />
+          <text class="node-title" x="16" y="26">~/sstg-data/chat/</text>
+          <text class="node-sub" x="16" y="46">index.json — 会话索引</text>
+          <text class="node-sub" x="16" y="62">messages/*.json — 消息持久化</text>
+        </g>
+
+        <!-- ROS2 后端 -->
+        <g class="node" data-id="rosbridge" transform="translate(760,80)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">rosbridge_websocket :9090</text>
+          <text class="node-sub" x="16" y="46">ROS2 ↔ WebSocket 桥接</text>
+        </g>
+        <g class="node" data-id="interaction" transform="translate(760,168)">
+          <rect width="290" height="72" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">interaction_manager (编排层)</text>
+          <text class="node-sub" x="16" y="48">/start_task → NLP → 规划 → 执行</text>
+        </g>
+        <g class="node" data-id="sysmgr" transform="translate(760,264)">
+          <rect width="290" height="72" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">system_manager</text>
+          <text class="node-sub" x="16" y="48">硬件启停 / 模式切换 / 系统监控</text>
+        </g>
+        <g class="node" data-id="nlpnode" transform="translate(760,360)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">nlp_node</text>
+          <text class="node-sub" x="16" y="46">自然语言理解 (DashScope VLM)</text>
+        </g>
+        <g class="node" data-id="planner" transform="translate(760,448)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">planning_node</text>
+          <text class="node-sub" x="16" y="46">语义路径规划 + 拓扑图匹配</text>
+        </g>
+        <g class="node" data-id="executor" transform="translate(760,536)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">executor_node → Nav2</text>
+          <text class="node-sub" x="16" y="46">NavigateToPose + 导航反馈</text>
+        </g>
+        <g class="node" data-id="perception" transform="translate(760,624)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">perception_node</text>
+          <text class="node-sub" x="16" y="46">视觉感知 + 语义标注 (VLM)</text>
+        </g>
+        <g class="node" data-id="mapmgr" transform="translate(760,712)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">map_manager_node</text>
+          <text class="node-sub" x="16" y="46">拓扑地图 CRUD + 语义管理</text>
+        </g>
+        <g class="node" data-id="explorer" transform="translate(760,800)">
+          <rect width="290" height="64" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">exploration_action_server</text>
+          <text class="node-sub" x="16" y="46">RRT 前沿探索 + SLAM</text>
+        </g>
+
+        <!-- 连线: 前端 → Vite Server -->
+        <path class="edge" d="M340 220 C 380 220, 390 190, 420 190" stroke="#3b82f6" />
+        <path class="edge-anim" d="M340 220 C 380 220, 390 190, 420 190" stroke="#3b82f6" />
+        <text class="edge-label" x="370" y="196">HTTP/SSE</text>
+
+        <!-- 前端 → rosbridge -->
+        <path class="edge" d="M340 546 C 560 546, 600 112, 760 112" stroke="#7c3aed" />
+        <path class="edge-anim" d="M340 546 C 560 546, 600 112, 760 112" stroke="#7c3aed" />
+        <text class="edge-label" x="540" y="380">WebSocket :9090</text>
+
+        <!-- Vite → ROS2 spawn -->
+        <path class="edge" d="M680 456 C 720 456, 724 300, 760 300" stroke="#0f6c5a" />
+        <path class="edge-anim" d="M680 456 C 720 456, 724 300, 760 300" stroke="#0f6c5a" />
+        <text class="edge-label" x="700" y="370">spawn</text>
+
+        <!-- Vite → LLM API -->
+        <path class="edge" d="M680 356 C 720 356, 730 356, 760 390" stroke="#dc2626" opacity="0.5" />
+        <text class="edge-label" x="714" y="352" style="fill:#dc2626">LLM API</text>
+      </svg>
+
+      <!-- ════════ SCENE 2: 数据流 + 接口 ════════ -->
+      <svg id="scene-dataflow" class="state-hidden" viewBox="0 0 1100 900" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#3b82f6" />
+          </marker>
+          <marker id="a-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#0f6c5a" />
+          </marker>
+          <marker id="a-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#7c3aed" />
+          </marker>
+          <marker id="a-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#d96c3f" />
+          </marker>
+        </defs>
+
+        <!-- 列标题 -->
+        <text class="group-label" x="80" y="36" style="font-size:15px">浏览器</text>
+        <text class="group-label" x="400" y="36" style="font-size:15px">Vite Server HTTP API</text>
+        <text class="group-label" x="800" y="36" style="font-size:15px">ROS2 (rosbridge WS)</text>
+
+        <line x1="300" y1="20" x2="300" y2="880" stroke="var(--line)" stroke-dasharray="4 4" />
+        <line x1="700" y1="20" x2="700" y2="880" stroke="var(--line)" stroke-dasharray="4 4" />
+
+        <!-- 聊天流 -->
+        <rect rx="14" x="30" y="60" width="240" height="44" fill="#dce9f5" stroke="var(--line)" />
+        <text class="node-title" x="46" y="88" style="font-size:13px">ChatView (chat 模式)</text>
+
+        <rect rx="14" x="330" y="60" width="340" height="44" fill="#dceee5" stroke="var(--line)" />
+        <text class="node-title" x="346" y="86" style="font-size:12px">POST /api/chat/stream → SSE 流式</text>
+
+        <path class="edge" d="M270 82 H 330" stroke="#3b82f6" marker-end="url(#a-blue)" />
+        <path class="edge-anim" d="M270 82 H 330" stroke="#3b82f6" />
+
+        <!-- SSE 广播 -->
+        <rect rx="14" x="30" y="120" width="240" height="44" fill="#e8ddf5" stroke="var(--line)" />
+        <text class="node-title" x="46" y="148" style="font-size:13px">chatStore (SSE 接收)</text>
+
+        <rect rx="14" x="330" y="120" width="340" height="44" fill="#dceee5" stroke="var(--line)" />
+        <text class="node-title" x="346" y="146" style="font-size:12px">GET /api/chat/events → SSE 推送</text>
+
+        <path class="edge" d="M330 142 H 270" stroke="#0f6c5a" marker-end="url(#a-green)" />
+        <path class="edge-anim" d="M330 142 H 270" stroke="#0f6c5a" />
+
+        <!-- 会话 CRUD -->
+        <rect rx="14" x="330" y="180" width="340" height="44" fill="#dceee5" stroke="var(--line)" />
+        <text class="node-title" x="346" y="206" style="font-size:12px">GET/POST/PUT/DEL /api/chat/sessions</text>
+        <path class="edge" d="M270 100 C 300 100, 310 202, 330 202" stroke="#3b82f6" marker-end="url(#a-blue)" opacity="0.5" />
+
+        <!-- LLM 配置 -->
+        <rect rx="14" x="330" y="240" width="340" height="44" fill="#dceee5" stroke="var(--line)" />
+        <text class="node-title" x="346" y="266" style="font-size:12px">GET/PUT /api/llm-config (全端同步)</text>
+
+        <!-- 图片 API -->
+        <rect rx="14" x="330" y="300" width="340" height="44" fill="#dceee5" stroke="var(--line)" />
+        <text class="node-title" x="346" y="326" style="font-size:12px">GET /api/images/* + /api/topo/search</text>
+
+        <!-- 系统管理 -->
+        <rect rx="14" x="330" y="360" width="340" height="44" fill="#dceee5" stroke="var(--line)" />
+        <text class="node-title" x="346" y="386" style="font-size:12px">POST /api/system/start|stop|cleanup</text>
+
+        <path class="edge" d="M670 382 H 750" stroke="#0f6c5a" marker-end="url(#a-green)" />
+        <text class="edge-label" x="690" y="376">spawn/kill</text>
+
+        <!-- LLM 代理 -->
+        <rect rx="14" x="330" y="420" width="340" height="44" fill="#f5d9d7" stroke="var(--line)" />
+        <text class="node-title" x="346" y="446" style="font-size:12px">POST /api/llm-proxy/* → 外部 LLM API</text>
+
+        <!-- ── ROS2 Topics ── -->
+        <rect rx="14" x="30" y="510" width="240" height="44" fill="#dce9f5" stroke="var(--line)" />
+        <text class="node-title" x="46" y="536" style="font-size:13px">MapView (位姿 + 地图)</text>
+
+        <rect rx="14" x="730" y="510" width="340" height="44" fill="#f7dfd1" stroke="var(--line)" />
+        <text class="node-title" x="746" y="534" style="font-size:12px">/navigation_feedback (位姿 + 四元数)</text>
+        <path class="edge" d="M730 532 H 270" stroke="#7c3aed" marker-end="url(#a-purple)" />
+        <path class="edge-anim" d="M730 532 H 270" stroke="#7c3aed" />
+
+        <rect rx="14" x="730" y="570" width="340" height="44" fill="#f7dfd1" stroke="var(--line)" />
+        <text class="node-title" x="746" y="594" style="font-size:12px">/map (OccupancyGrid, 2s 节流)</text>
+        <path class="edge" d="M730 592 H 270" stroke="#7c3aed" marker-end="url(#a-purple)" opacity="0.6" />
+
+        <rect rx="14" x="30" y="630" width="240" height="44" fill="#dce9f5" stroke="var(--line)" />
+        <text class="node-title" x="46" y="656" style="font-size:13px">ChatView (任务进度)</text>
+
+        <rect rx="14" x="730" y="630" width="340" height="44" fill="#f7dfd1" stroke="var(--line)" />
+        <text class="node-title" x="746" y="654" style="font-size:12px">/task_status (state + progress)</text>
+        <path class="edge" d="M730 652 H 270" stroke="#d96c3f" marker-end="url(#a-orange)" />
+        <path class="edge-anim" d="M730 652 H 270" stroke="#d96c3f" />
+
+        <rect rx="14" x="30" y="690" width="240" height="44" fill="#dce9f5" stroke="var(--line)" />
+        <text class="node-title" x="46" y="716" style="font-size:13px">RobotView (系统监控)</text>
+
+        <rect rx="14" x="730" y="690" width="340" height="44" fill="#f7dfd1" stroke="var(--line)" />
+        <text class="node-title" x="746" y="714" style="font-size:12px">/system/status + /system/log</text>
+        <path class="edge" d="M730 712 H 270" stroke="#7c3aed" marker-end="url(#a-purple)" opacity="0.6" />
+
+        <!-- ── ROS2 Services ── -->
+        <rect rx="14" x="30" y="770" width="240" height="44" fill="#dce9f5" stroke="var(--line)" />
+        <text class="node-title" x="46" y="796" style="font-size:13px">ChatView (导航/探索指令)</text>
+
+        <rect rx="14" x="730" y="770" width="340" height="44" fill="#f7dfd1" stroke="var(--line)" />
+        <text class="node-title" x="746" y="794" style="font-size:12px">/start_task (ProcessNLPQuery)</text>
+        <path class="edge" d="M270 792 H 730" stroke="#3b82f6" marker-end="url(#a-blue)" />
+        <path class="edge-anim" d="M270 792 H 730" stroke="#3b82f6" />
+
+        <rect rx="14" x="730" y="830" width="340" height="44" fill="#f7dfd1" stroke="var(--line)" />
+        <text class="node-title" x="746" y="854" style="font-size:12px">/system/launch_mode + /cancel_task</text>
+        <path class="edge" d="M270 730 C 300 730, 690 852, 730 852" stroke="#3b82f6" marker-end="url(#a-blue)" opacity="0.5" />
+
+        <!-- 标注 -->
+        <rect rx="10" x="320" y="478" width="100" height="24" fill="rgba(255,255,255,0.9)" stroke="var(--line)" />
+        <text x="340" y="494" style="font-size:11px;font-weight:800;fill:var(--muted)">HTTP / SSE</text>
+        <rect rx="10" x="686" y="478" width="120" height="24" fill="rgba(255,255,255,0.9)" stroke="var(--line)" />
+        <text x="698" y="494" style="font-size:11px;font-weight:800;fill:var(--muted)">WebSocket (WS)</text>
+      </svg>
+
+      <!-- ════════ SCENE 3: 后端对接 ════════ -->
+      <svg id="scene-backend" class="state-hidden" viewBox="0 0 1100 900" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a2-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#0f6c5a" />
+          </marker>
+          <marker id="a2-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#d96c3f" />
+          </marker>
+          <marker id="a2-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#c53b2c" />
+          </marker>
+        </defs>
+
+        <text class="group-label" x="40" y="36" style="font-size:15px">UI 已具备 (2.x)</text>
+        <text class="group-label" x="600" y="36" style="font-size:15px">3.x 后端需要增强</text>
+        <line x1="540" y1="20" x2="540" y2="880" stroke="var(--line)" stroke-dasharray="6 5" />
+
+        <!-- UI 已具备 -->
+        <g transform="translate(40,56)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">多模态 LLM 对话 (流式 + 5 Provider + 多端同步)</text>
+        </g>
+        <g transform="translate(40,104)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">拓扑语义检索 (关键词 + 近义词 + 多级评分)</text>
+        </g>
+        <g transform="translate(40,152)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">VLM 图片标注 (Gemini/Qwen-VL Grounding + Sharp 绘制)</text>
+        </g>
+        <g transform="translate(40,200)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">3D 全息地图 (PGM→挤出 + 拓扑节点 + 360° 全景)</text>
+        </g>
+        <g transform="translate(40,248)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">机器人位姿跟踪 (/navigation_feedback → 3D 箭头)</text>
+        </g>
+        <g transform="translate(40,296)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">实时 OccupancyGrid 叠加 (/map → LiveMapLayer)</text>
+        </g>
+        <g transform="translate(40,344)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">任务状态跟踪 (/task_status → 思考过程指示条)</text>
+        </g>
+        <g transform="translate(40,392)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">系统监控 (CPU/RAM/设备/日志/活跃节点)</text>
+        </g>
+        <g transform="translate(40,440)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">模式切换 + 后端进程管理 (三层防护)</text>
+        </g>
+        <g transform="translate(40,488)">
+          <rect rx="14" width="470" height="38" fill="#dceee5" stroke="var(--line)" />
+          <text x="16" y="24" style="font-size:12px;font-weight:700;fill:#205433">图片上传 (压缩 + base64 + 多模态 VLM) + 语音输入</text>
+        </g>
+
+        <!-- 3.x 需增强 -->
+        <g class="node" data-id="need-explore" transform="translate(570,56)">
+          <rect width="490" height="100" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">探索功能对接</text>
+          <text class="node-sub" x="16" y="46">UI 已有: explore 模式 + LiveMapLayer + /map 订阅</text>
+          <text class="node-sub" x="16" y="64">需要: /task_status 中填充 exploring 状态 + frontier_count</text>
+          <text class="node-sub" x="16" y="82">需要: 新节点发现通知 (拓扑增量 Topic 或 GetTopologicalMap)</text>
+        </g>
+
+        <g class="node" data-id="need-path" transform="translate(570,176)">
+          <rect width="490" height="86" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">导航路径可视化</text>
+          <text class="node-sub" x="16" y="46">UI 已有: MapView 拓扑边连线 + 机器人位姿追踪</text>
+          <text class="node-sub" x="16" y="64">需要: 导航路径点序列 Topic + distance/time 真实值</text>
+        </g>
+
+        <g class="node" data-id="need-topo" transform="translate(570,282)">
+          <rect width="490" height="86" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">拓扑地图动态更新</text>
+          <text class="node-sub" x="16" y="46">当前: 静态 public/maps/topological_map_manual.json</text>
+          <text class="node-sub" x="16" y="64">需要: GetTopologicalMap service + 拓扑变更 Topic</text>
+        </g>
+
+        <g class="node" data-id="need-search" transform="translate(570,388)">
+          <rect width="490" height="86" fill="#f7dfd1" />
+          <text class="node-title" x="16" y="26">物体检索增强</text>
+          <text class="node-sub" x="16" y="46">当前: chatSyncPlugin 前端字符串匹配</text>
+          <text class="node-sub" x="16" y="64">可选: CheckObjectPresence service (VLM 确认) + 语义向量搜索</text>
+        </g>
+
+        <!-- 关键交接点 -->
+        <rect class="group-box" x="570" y="510" width="490" height="360" />
+        <text class="group-label" x="590" y="538">关键交接点</text>
+
+        <g transform="translate(590,556)">
+          <rect rx="10" width="450" height="32" fill="var(--soft-blue)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#1d4565">任务入口: rosStore.startTask() → /start_task (ProcessNLPQuery)</text>
+        </g>
+        <g transform="translate(590,598)">
+          <rect rx="10" width="450" height="32" fill="var(--soft-orange)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#6e371f">状态反馈: /task_status Topic → ChatView 思考过程指示条</text>
+        </g>
+        <g transform="translate(590,640)">
+          <rect rx="10" width="450" height="32" fill="var(--soft-green)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#205433">LLM 配置: chatStore → App 启动推送 → /nlp/update_llm_config</text>
+        </g>
+        <g transform="translate(590,682)">
+          <rect rx="10" width="450" height="32" fill="var(--soft-purple)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#4a2d6e">模式切换: RobotView → /system/launch_mode (LaunchMode)</text>
+        </g>
+        <g transform="translate(590,724)">
+          <rect rx="10" width="450" height="32" fill="var(--soft-yellow)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#5e4a1a">地图数据: MapView ← public/maps/ + /map Topic</text>
+        </g>
+        <g transform="translate(590,766)">
+          <rect rx="10" width="450" height="32" fill="var(--soft-red)" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#8c2419">拓扑数据: 静态 JSON + chatSyncPlugin ← GetTopologicalMap (待对接)</text>
+        </g>
+        <g transform="translate(590,808)">
+          <rect rx="10" width="450" height="32" fill="#dce9f5" />
+          <text x="12" y="21" style="font-size:12px;font-weight:700;fill:#1d4565">聊天持久化: chatSyncPlugin (Vite 侧) + nlp_node (可选 ROS 侧)</text>
+        </g>
+
+        <!-- 连线 -->
+        <path class="edge" d="M510 365 H 570" stroke="#d96c3f" marker-end="url(#a2-orange)" />
+        <path class="edge" d="M510 315 H 570" stroke="#d96c3f" marker-end="url(#a2-orange)" />
+        <path class="edge" d="M510 265 H 570" stroke="#d96c3f" marker-end="url(#a2-orange)" />
+        <path class="edge" d="M510 106 H 570" stroke="#d96c3f" marker-end="url(#a2-orange)" />
+      </svg>
+    </div>
+
+    <!-- ════════ 右侧面板 ════════ -->
+    <div class="panel" id="panel-content">
+      <div class="card" id="card-info">
+        <h2 id="info-title">点击图中节点查看详情</h2>
+        <p id="info-desc">
+          左侧图表展示了 SSTG-Nav UI 的完整模块组成。点击任意节点可查看该模块的详细信息、文件路径和关键接口。
+        </p>
+      </div>
+
+      <div class="card" id="card-api-http">
+        <h2>Vite Server HTTP API (聊天/图片/系统)</h2>
+        <table class="api-table">
+          <tr><th>方法</th><th>路径</th><th>功能</th></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/chat/stream</code></td><td>LLM 流式聊天 (SSE)</td></tr>
+          <tr><td><span class="method m-get">GET</span></td><td><code>/api/chat/events</code></td><td>SSE 实时推送</td></tr>
+          <tr><td><span class="method m-get">GET</span></td><td><code>/api/chat/sessions</code></td><td>会话列表</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/chat/sessions</code></td><td>创建会话</td></tr>
+          <tr><td><span class="method m-put">PUT</span></td><td><code>/api/chat/sessions/:id</code></td><td>重命名会话</td></tr>
+          <tr><td><span class="method m-del">DEL</span></td><td><code>/api/chat/sessions/:id</code></td><td>删除会话</td></tr>
+          <tr><td><span class="method m-get">GET</span></td><td><code>/api/llm-config</code></td><td>LLM 配置</td></tr>
+          <tr><td><span class="method m-put">PUT</span></td><td><code>/api/llm-config</code></td><td>更新 LLM 配置</td></tr>
+          <tr><td><span class="method m-get">GET</span></td><td><code>/api/images/*</code></td><td>图片静态服务</td></tr>
+          <tr><td><span class="method m-get">GET</span></td><td><code>/api/topo/search</code></td><td>拓扑图片搜索</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/system/start</code></td><td>启动 ROS2 后端</td></tr>
+          <tr><td><span class="method m-post">POST</span></td><td><code>/api/system/stop</code></td><td>停止 ROS2 后端</td></tr>
+        </table>
+      </div>
+
+      <div class="card" id="card-api-ros">
+        <h2>ROS2 WebSocket 接口 (rosbridge :9090)</h2>
+        <table class="api-table">
+          <tr><th>类型</th><th>名称</th><th>消息类型</th></tr>
+          <tr><td><span class="method m-sub">SUB</span></td><td><code>/navigation_feedback</code></td><td>NavigationFeedback</td></tr>
+          <tr><td><span class="method m-sub">SUB</span></td><td><code>/task_status</code></td><td>TaskStatus</td></tr>
+          <tr><td><span class="method m-sub">SUB</span></td><td><code>/system/status</code></td><td>SystemStatus</td></tr>
+          <tr><td><span class="method m-sub">SUB</span></td><td><code>/system/log</code></td><td>std_msgs/String</td></tr>
+          <tr><td><span class="method m-sub">SUB</span></td><td><code>/map</code></td><td>OccupancyGrid</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/start_task</code></td><td>ProcessNLPQuery</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/cancel_task</code></td><td>std_srvs/Trigger</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/system/launch_mode</code></td><td>LaunchMode</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/system/get_status</code></td><td>GetSystemStatus</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/nlp/update_llm_config</code></td><td>UpdateLLMConfig</td></tr>
+          <tr><td><span class="method m-srv">SRV</span></td><td><code>/nlp/delete_session</code></td><td>DeleteChatSession</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>技术栈</h2>
+        <table class="api-table">
+          <tr><td style="width:140px;font-weight:700">React 19</td><td>UI 框架</td></tr>
+          <tr><td style="font-weight:700">Zustand 5</td><td>状态管理 (3 stores)</td></tr>
+          <tr><td style="font-weight:700">Three.js + R3F</td><td>3D 全息地图渲染</td></tr>
+          <tr><td style="font-weight:700">roslib.js</td><td>ROS2 WebSocket 桥</td></tr>
+          <tr><td style="font-weight:700">Vite 8</td><td>构建 + 自定义插件后端</td></tr>
+          <tr><td style="font-weight:700">TailwindCSS 3</td><td>样式 (暗色主题)</td></tr>
+          <tr><td style="font-weight:700">Sharp</td><td>服务端图片标注</td></tr>
+          <tr><td style="font-weight:700">react-markdown</td><td>Markdown 渲染</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    SSTG-Nav UI v2.5 架构全景图 — 纯前端单页，无外部依赖，直接浏览器打开即可。
+    详细文档见 <code>sstg_ui_app/README.md</code>
+  </div>
+</div>
+
+<script>
+// ── 视图切换 ──
+const views = ['overview', 'dataflow', 'backend'];
+const btns = views.map(v => document.getElementById('btn-' + v));
+const scenes = views.map(v => document.getElementById('scene-' + v));
+
+function switchView(target) {
+  views.forEach((v, i) => {
+    const active = v === target;
+    btns[i].classList.toggle('active', active);
+    scenes[i].classList.toggle('state-visible', active);
+    scenes[i].classList.toggle('state-hidden', !active);
+  });
+}
+
+btns.forEach((btn, i) => {
+  btn.addEventListener('click', () => switchView(views[i]));
+});
+
+// ── 节点详情 ──
+const nodeData = {
+  app: {
+    title: 'App.tsx — App Shell',
+    desc: '全局布局、路由 (/ /map /robot)、认证门禁 (AuthGate, 共享密钥 sstg2026)、用户昵称 (UsernameModal)。侧边栏电源按钮: 短按启停 ROS2 后端，长按 2s 强制清杀。启动流程: connect() → initChat() → 推送 LLM 配置 → 自动 launchMode("navigation")。',
+    file: 'src/App.tsx (289 行)',
+    tags: [['前端组件', 'tag-blue']],
+  },
+  chatview: {
+    title: 'ChatView.tsx — 多模态聊天',
+    desc: '最复杂的组件 (1544 行)。三种模式: chat (流式 SSE) / navigate (ROS) / explore (ROS)。LLM 流式渲染用 rAF 批量刷新。支持图片上传 (压缩→base64→多模态 VLM)、语音输入 (Web Speech API)、任务队列 (排队→弹入)、LLM Provider 设置+诊断。滚动: visibilitychange 后台归底 + 切换会话归底。',
+    file: 'src/components/ChatView.tsx (1544 行)',
+    tags: [['前端组件', 'tag-blue'], ['核心', 'tag-red']],
+  },
+  mapview: {
+    title: 'MapView.tsx — 3D 全息地图',
+    desc: 'Three.js + React Three Fiber 渲染。PGM→2.5D 挤出网格 (displacementMap)。拓扑节点: 菱形晶体+HTML 标签。机器人实时位姿: 绿色锥体箭头。实时 OccupancyGrid 叠加 (SLAM/探索)。节点详情: 语义信息+置信度+360° 全景画廊。地图管理器 CRUD + 图层校准 (翻转/偏移) + 相机视角持久化。',
+    file: 'src/components/MapView.tsx (707 行)',
+    tags: [['前端组件', 'tag-blue'], ['3D', 'tag-purple']],
+  },
+  robotview: {
+    title: 'RobotView.tsx — 系统控制中心',
+    desc: '运行模式切换 (exploration/navigation/stop → /system/launch_mode)。硬件设备状态 (底盘/雷达/相机)。系统资源 CPU/RAM 百分比+进度条。活跃 ROS2 节点列表 (5s 轮询)。实时系统日志 (自动滚动, 错误/警告高亮)。',
+    file: 'src/components/RobotView.tsx (337 行)',
+    tags: [['前端组件', 'tag-blue']],
+  },
+  rosstore: {
+    title: 'rosStore.ts — ROS 状态管理',
+    desc: '自动检测 WS 地址 (本地→ws://localhost:9090, 公网→wss://域名/rosbridge)。断线 3s 重连。订阅 5 个 Topics: /navigation_feedback (位姿), /task_status (进度), /system/status (CPU/设备), /system/log (日志), /map (栅格地图)。调用 7 个 Services: startTask, cancelTask, launchMode, getSystemStatus, updateLLMConfig, deleteChatSession, queryTaskStatus。',
+    file: 'src/store/rosStore.ts (367 行)',
+    tags: [['状态管理', 'tag-purple'], ['ROS2', 'tag-orange']],
+  },
+  chatstore: {
+    title: 'chatStore.ts — 聊天状态管理',
+    desc: '会话列表+当前消息 (服务端同步)。SSE 事件处理 (message_added/updated, session CRUD, llm_config_updated, 自动去重)。LLM Provider 配置 (服务端持久化+SSE 多端同步)。任务所有权追踪 (isTaskOwner/currentRobotMsgId)。本地消息队列 (localQueue/canceledTaskIds)。',
+    file: 'src/store/chatStore.ts (537 行)',
+    tags: [['状态管理', 'tag-purple']],
+  },
+  mapstore: {
+    title: 'mapStore.ts — 地图状态管理',
+    desc: '多地图 CRUD (addMap/deleteMap/renameMap)。每地图独立校准参数 (flipMapX/Y, flipNodeX/Y, nodeOffsetX/Y, showMap/showNodes)。相机视角持久化 (position/target/zoom)。全部 localStorage 持久化。',
+    file: 'src/store/mapStore.ts (123 行)',
+    tags: [['状态管理', 'tag-purple']],
+  },
+  hooks: {
+    title: 'Hooks + 工具库',
+    desc: 'useVoiceInput: Web Speech API 语音识别 (zh-CN, 持续监听, Chrome/Edge)。pgm3DParser: 解析 ROS2 P5 格式 PGM → 生成 color canvas + displacement canvas → Three.js 纹理。utils.ts: cn() = clsx + tailwind-merge。',
+    file: 'src/hooks/ + src/lib/',
+    tags: [['工具库', 'tag-green']],
+  },
+  chatsync: {
+    title: 'chatSyncPlugin — 核心服务器',
+    desc: '1493 行, 整个 UI 的核心后端。REST API (会话 CRUD + 消息读写)。SSE 广播 (多浏览器实时同步, 30s 心跳)。LLM 流式代理 (OpenAI 兼容, Gemini 特殊处理)。图片检索引擎 (拓扑语义搜索, 多级评分, 近义词扩展)。图片标注引擎 (VLM Grounding + Sharp 绘制红色椭圆框)。多模态适配 (Gemini/Qwen-VL/GPT-4o 格式)。JSON 持久化 ~/sstg-data/chat/。',
+    file: 'vite-plugins/chatSyncPlugin.ts (1493 行)',
+    tags: [['Vite Server', 'tag-green'], ['核心', 'tag-red']],
+  },
+  llmproxy: {
+    title: 'llmProxyPlugin — CORS 代理',
+    desc: '解决浏览器直调 LLM API 的 CORS 问题。前端 → /api/llm-proxy/* + X-Target-Url header → 转发到真实 API。用于 ChatView 设置面板的连通性诊断测试。',
+    file: 'vite.config.ts 内 (约 90 行)',
+    tags: [['Vite Server', 'tag-green']],
+  },
+  launcher: {
+    title: 'backendLauncherPlugin — 进程管理',
+    desc: 'ROS2 后端进程管理, 三层防护: ① 停止时优雅关闭链 (system_manager 先关 Nav2 → SIGTERM → 15s 超时 → SIGKILL) ② 启动前 pkill 清理残留 (25+ 进程模式匹配) ③ 长按 2s 一键清杀。API: /api/system/start-backend, stop-backend, force-cleanup, backend-status。',
+    file: 'vite.config.ts 内 (约 170 行)',
+    tags: [['Vite Server', 'tag-green']],
+  },
+  static: {
+    title: 'Vite Static Server',
+    desc: 'public/ 目录下的静态文件: PGM/YAML 地图, 拓扑 JSON, 全景图 (captured_nodes/), PWA manifest/icons。',
+    file: 'public/',
+    tags: [['Vite Server', 'tag-green']],
+  },
+  datadir: {
+    title: '~/sstg-data/chat/ — 运行时数据',
+    desc: 'chatSyncPlugin 写入的持久化数据。index.json (会话索引), messages/*.json (消息), llm-config.json (LLM 配置), images/upload/ (用户上传), images/annotated/ (VLM 标注)。防抖写盘 (1s debounce)。',
+    file: '~/sstg-data/chat/',
+    tags: [['数据存储', 'tag-orange']],
+  },
+  rosbridge: {
+    title: 'rosbridge_websocket :9090',
+    desc: 'ROS2 ↔ WebSocket 桥接。所有前端 ROS 交互通过此桥。本地: ws://localhost:9090, 公网: Vite 代理 /rosbridge → wss://域名/rosbridge。',
+    file: 'rosbridge_server 包',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  interaction: {
+    title: 'interaction_manager — 编排层',
+    desc: '接收 /start_task (ProcessNLPQuery) → 调度 NLP 理解 → 语义规划 → 导航执行。发布 /task_status 反馈进度。状态机: IDLE → UNDERSTANDING → PLANNING → NAVIGATING → COMPLETED。任务队列 (最多 5 项)。Watchdog (30s 心跳, 60s 超时)。',
+    file: 'sstg_nav_ws/src/sstg_interaction_manager/',
+    tags: [['ROS2 后端', 'tag-orange'], ['编排层', 'tag-red']],
+  },
+  sysmgr: {
+    title: 'system_manager — 系统管理',
+    desc: '硬件设备检测与监控。运行模式切换 (LaunchMode service)。CPU/RAM 采集 → /system/status 发布。系统日志 → /system/log 发布。活跃节点列表 → GetSystemStatus service。',
+    file: 'sstg_nav_ws/src/sstg_system_manager/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  nlpnode: {
+    title: 'nlp_node — 自然语言理解',
+    desc: '接收 ProcessNLPQuery → 调用 DashScope VLM → 返回 intent + confidence + query_json。支持意图: navigate_to, locate_object, explore_new_home, describe_scene, chat 等。接收 UpdateLLMConfig → 热更新 LLM 配置。',
+    file: 'sstg_nav_ws/src/sstg_nlp_interface/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  planner: {
+    title: 'planning_node — 路径规划',
+    desc: '语义匹配: 用户目标 → 拓扑节点 (模糊匹配+别名)。路径规划: 拓扑图上的路径搜索。调用 GetNodePose 获取目标坐标。返回 NavigationPlan 给 executor。',
+    file: 'sstg_nav_ws/src/sstg_navigation_planner/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  executor: {
+    title: 'executor_node — 导航执行',
+    desc: '接收 ExecuteNavigation → 调用 Nav2 NavigateToPose。发布 /navigation_feedback (位姿+进度+距离+剩余时间)。异常处理: 超时/碰撞/取消。',
+    file: 'sstg_nav_ws/src/sstg_navigation_executor/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  perception: {
+    title: 'perception_node — 视觉感知',
+    desc: '全景采集 (capture_panorama): 4 方向 RGB+Depth。语义标注 (annotate_semantic): VLM 物体识别。CheckObjectPresence: 确认物体是否存在。',
+    file: 'sstg_nav_ws/src/sstg_perception/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  mapmgr: {
+    title: 'map_manager_node — 拓扑管理',
+    desc: '拓扑节点 CRUD (CreateNode, GetNodePose)。语义信息更新 (UpdateSemantic)。拓扑图导出 (GetTopologicalMap)。持久化到 JSON 文件。',
+    file: 'sstg_nav_ws/src/sstg_map_manager/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  explorer: {
+    title: 'exploration_action_server — RRT 探索',
+    desc: 'ExploreHome action: RRT 前沿探索 + SLAM 建图。反馈: frontier_count + progress。结果: map_yaml + trace_json。',
+    file: 'sstg_nav_ws/src/sstg_rrt_explorer/',
+    tags: [['ROS2 后端', 'tag-orange']],
+  },
+  'need-explore': {
+    title: '3.x: 探索功能对接',
+    desc: 'UI 已有 explore 模式 + LiveMapLayer + /map 订阅。后端需要: ① /task_status 中 state=exploring + frontier_count ② ExploreHome.action 反馈真实 progress ③ 探索中发现新节点时通知 UI 刷新拓扑图。',
+    file: '需后端 exploration_action_server 增强',
+    tags: [['3.x 待对接', 'tag-red']],
+  },
+  'need-path': {
+    title: '3.x: 导航路径可视化',
+    desc: 'UI 已有 MapView 拓扑边连线 + 机器人位姿追踪。后端需要: ① 导航路径点序列 Topic → MapView 绘制规划路径 ② NavigationFeedback 中 distance_to_target + estimated_time_remaining 填充真实值。',
+    file: '需后端 executor_node 增强',
+    tags: [['3.x 待对接', 'tag-red']],
+  },
+  'need-topo': {
+    title: '3.x: 拓扑地图动态更新',
+    desc: '当前 UI 读取静态 JSON。后端需要: ① GetTopologicalMap service → UI 主动拉取最新拓扑 ② 拓扑变更 Topic → 节点增删时自动刷新。',
+    file: '需后端 map_manager_node 增强',
+    tags: [['3.x 待对接', 'tag-red']],
+  },
+  'need-search': {
+    title: '3.x: 物体检索增强',
+    desc: '当前 chatSyncPlugin 内置字符串匹配。可选增强: ① CheckObjectPresence service → VLM 确认物体真实存在 ② 后端语义向量搜索替代前端关键词匹配。',
+    file: '需后端 perception_node 增强',
+    tags: [['3.x 可选', 'tag-purple']],
+  },
+};
+
+// 选中节点
+let selectedNodeEl = null;
+
+document.querySelectorAll('.node[data-id]').forEach(node => {
+  node.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = node.getAttribute('data-id');
+    const data = nodeData[id];
+    if (!data) return;
+
+    // 更新选中样式
+    if (selectedNodeEl) selectedNodeEl.classList.remove('selected');
+    node.classList.add('selected');
+    selectedNodeEl = node;
+
+    // 更新面板
+    const infoTitle = document.getElementById('info-title');
+    const infoDesc = document.getElementById('info-desc');
+    const card = document.getElementById('card-info');
+
+    infoTitle.textContent = data.title;
+    let html = `<p class="desc">${data.desc}</p>`;
+    html += `<code class="file-path">${data.file}</code>`;
+    html += data.tags.map(([t, c]) => `<span class="card-tag ${c}">${t}</span> `).join('');
+    infoDesc.innerHTML = html;
+  });
+});
+
+// 点击空白取消选中
+document.querySelector('.viz-wrap').addEventListener('click', () => {
+  if (selectedNodeEl) {
+    selectedNodeEl.classList.remove('selected');
+    selectedNodeEl = null;
+    document.getElementById('info-title').textContent = '点击图中节点查看详情';
+    document.getElementById('info-desc').innerHTML = '左侧图表展示了 SSTG-Nav UI 的完整模块组成。点击任意节点可查看该模块的详细信息、文件路径和关键接口。';
+  }
+});
+</script>
+</body>
+</html>
