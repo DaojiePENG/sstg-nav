@@ -157,11 +157,6 @@ def index_of_point(mapData, Xp):
     Xstartx = mapData.info.origin.position.x
     Xstarty = mapData.info.origin.position.y
     width = mapData.info.width
-    height = mapData.info.height
-    col = int(floor((Xp[0] - Xstartx) / resolution))
-    row = int(floor((Xp[1] - Xstarty) / resolution))
-    if col < 0 or col >= width or row < 0 or row >= height:
-        return -1
     index = int((floor((Xp[1]-Xstarty)/resolution) * width) +
                 (floor((Xp[0]-Xstartx)/resolution)))
     return index
@@ -176,16 +171,9 @@ def point_of_index(mapData, i):
 # ________________________________________________________________________________
 
 
-def point_in_map(mapData, Xp):
-    return index_of_point(mapData, Xp) >= 0
-# ________________________________________________________________________________
-
-
 def informationGain(mapData, point, r):
     infoGain = 0
     index = index_of_point(mapData, point)
-    if index < 0:
-        return 0.0
     r_region = int(r/mapData.info.resolution)
     init_index = index-r_region*(mapData.info.width+1)
     for n in range(0, 2*r_region+1):
@@ -202,8 +190,6 @@ def informationGain(mapData, point, r):
 
 def discount(mapData, assigned_pt, centroids, infoGain, r):
     index = index_of_point(mapData, assigned_pt)
-    if index < 0:
-        return infoGain
     r_region = int(r/mapData.info.resolution)
     init_index = index-r_region*(mapData.info.width+1)
     for n in range(0, 2*r_region+1):
@@ -233,8 +219,6 @@ def pathCost(path):
 
 def unvalid(mapData, pt):
     index = index_of_point(mapData, pt)
-    if index < 0:
-        return True
     r_region = 5
     init_index = index-r_region*(mapData.info.width+1)
     for n in range(0, 2*r_region+1):
@@ -274,8 +258,15 @@ def Nearest2(V, x):
 
 
 def gridValue(mapData, Xp):
+    resolution = mapData.info.resolution
+    Xstartx = mapData.info.origin.position.x
+    Xstarty = mapData.info.origin.position.y
+    width = mapData.info.width
     Data = mapData.data
-    index = index_of_point(mapData, Xp)
-    if index < 0 or index >= len(Data):
+    index = (floor((Xp[1]-Xstarty)/resolution)*width) + \
+        (floor((Xp[0]-Xstartx)/resolution))
+    if int(index) < len(Data):
+        return Data[int(index)]
+    else:
         return 100
-    return Data[index]
+

@@ -139,38 +139,18 @@ class Nav2Client:
     
     def _get_result_callback(self, future: Future, user_callback: Optional[Callable]):
         """处理导航结果"""
-        try:
-            result_wrapper = future.result()
-            status = result_wrapper.status
-            # action_msgs/GoalStatus codes:
-            #   2=STATUS_ACCEPTED, 4=STATUS_SUCCEEDED, 5=STATUS_CANCELED, 6=STATUS_ABORTED
-            STATUS_SUCCEEDED = 4
-            STATUS_CANCELED = 5
-            STATUS_ABORTED = 6
-
-            self.navigation_in_progress = False
-
-            if status == STATUS_SUCCEEDED:
-                self.logger.info("✓ 导航完成")
-                if user_callback:
-                    user_callback(True, "导航成功")
-            elif status == STATUS_CANCELED:
-                self.logger.warn("🛑 导航已取消")
-                if user_callback:
-                    user_callback(False, "导航被取消")
-            elif status == STATUS_ABORTED:
-                self.logger.error("❌ 导航中止 (Nav2 abort)")
-                if user_callback:
-                    user_callback(False, "导航中止: 路径规划失败或机器人卡住，请检查定位和障碍物")
-            else:
-                self.logger.error(f"❌ 导航失败 (status={status})")
-                if user_callback:
-                    user_callback(False, f"导航异常 (status={status})")
-        except Exception as e:
-            self.navigation_in_progress = False
-            self.logger.error(f"❌ 导航结果回调异常: {e}")
+        result = future.result().result
+        
+        self.navigation_in_progress = False
+        
+        if result:
+            self.logger.info("✓ 导航完成")
             if user_callback:
-                user_callback(False, f"导航结果异常: {e}")
+                user_callback(True, "导航成功")
+        else:
+            self.logger.error("❌ 导航失败")
+            if user_callback:
+                user_callback(False, "导航失败")
     
     def cancel_goal(self) -> bool:
         """

@@ -137,7 +137,6 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
         
         # Create base node
         node = topo_map.create_node(x, y, theta)
-        node.name = data.get('name', node.name)
         
         # Add semantic info if provided
         semantic_data = data.get('semantic_info', {})
@@ -151,7 +150,6 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
             for obj_data in objects_data:
                 obj = SemanticObject(
                     name=obj_data.get('name', ''),
-                    name_cn=obj_data.get('name_cn', ''),
                     position=obj_data.get('position', ''),
                     quantity=obj_data.get('quantity', 1),
                     confidence=obj_data.get('confidence', 0.0)
@@ -160,11 +158,8 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
             
             semantic_info = SemanticInfo(
                 room_type=room_type,
-                room_type_cn=semantic_data.get('room_type_cn', ''),
-                aliases=semantic_data.get('aliases', []),
                 confidence=confidence,
                 objects=objects,
-                semantic_tags=semantic_data.get('semantic_tags', []),
                 description=description
             )
             topo_map.update_semantic(node.node_id, semantic_info)
@@ -189,8 +184,6 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
             node.x = pose_data.get('x', node.x)
             node.y = pose_data.get('y', node.y)
             node.theta = pose_data.get('theta', node.theta)
-        if 'name' in data:
-            node.name = data.get('name', node.name)
         
         # Update semantic info if provided
         semantic_data = data.get('semantic_info', {})
@@ -204,7 +197,6 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
             for obj_data in objects_data:
                 obj = SemanticObject(
                     name=obj_data.get('name', ''),
-                    name_cn=obj_data.get('name_cn', ''),
                     position=obj_data.get('position', ''),
                     quantity=obj_data.get('quantity', 1),
                     confidence=obj_data.get('confidence', 0.0)
@@ -213,11 +205,8 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
             
             semantic_info = SemanticInfo(
                 room_type=room_type,
-                room_type_cn=semantic_data.get('room_type_cn', ''),
-                aliases=semantic_data.get('aliases', []),
                 confidence=confidence,
                 objects=objects,
-                semantic_tags=semantic_data.get('semantic_tags', []),
                 description=description
             )
             topo_map.update_semantic(node_id, semantic_info)
@@ -242,8 +231,8 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
     @app.post("/api/edge")
     async def create_edge(data: Dict):
         """Create an edge between two nodes."""
-        from_id = data.get('from', data.get('source'))
-        to_id = data.get('to', data.get('target'))
+        from_id = data.get('from')
+        to_id = data.get('to')
         distance = data.get('distance', 0.0)
         
         success = topo_map.add_edge(from_id, to_id, distance)
@@ -255,8 +244,8 @@ def create_fastapi_app(topo_map: TopologicalMap) -> FastAPI:
     @app.delete("/api/edge")
     async def delete_edge(data: Dict):
         """Delete an edge between two nodes."""
-        from_id = data.get('from', data.get('source'))
-        to_id = data.get('to', data.get('target'))
+        from_id = data.get('from')
+        to_id = data.get('to')
         
         success = topo_map.remove_edge(from_id, to_id)
         if not success:

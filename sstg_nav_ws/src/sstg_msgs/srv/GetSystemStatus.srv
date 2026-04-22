@@ -1,5 +1,0 @@
----
-string mode
-string[] active_nodes
-bool hardware_ok
-string[] device_status

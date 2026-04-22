@@ -9,7 +9,7 @@ from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from sstg_msgs.msg import GoalTraceEvent, PointArray
-from functions_ros2 import robot, informationGain, discount, gridValue, point_in_map
+from functions_ros2 import robot, informationGain, discount
 from numpy.linalg import norm
 
 
@@ -18,7 +18,7 @@ class AssignerNode(Node):
         super().__init__('assigner')
 
         self.declare_parameter('map_topic', '/map')
-        self.declare_parameter('info_radius', 1.5)
+        self.declare_parameter('info_radius', 1.0)
         self.declare_parameter('info_multiplier', 3.0)
         self.declare_parameter('hysteresis_radius', 3.0)
         self.declare_parameter('hysteresis_gain', 2.0)
@@ -28,14 +28,9 @@ class AssignerNode(Node):
         self.declare_parameter('namespace_init_count', 1)
         self.declare_parameter('assignment_period', 0.5)
         self.declare_parameter('goal_tolerance', 0.25)
-        self.declare_parameter('min_target_distance', 0.25)
-        self.declare_parameter('repeat_target_radius', 0.5)
-        self.declare_parameter('repeat_target_cooldown', 15.0)
-        self.declare_parameter('reached_penalty_radius', 1.5)
-        self.declare_parameter('reached_penalty_factor', 0.3)
-        self.declare_parameter('momentum_gain', 2.0)
-        self.declare_parameter('nearby_cluster_radius', 2.5)
-        self.declare_parameter('nearby_cluster_gain', 2.0)
+        self.declare_parameter('min_target_distance', 0.35)
+        self.declare_parameter('repeat_target_radius', 0.30)
+        self.declare_parameter('repeat_target_cooldown', 8.0)
 
         map_topic = self.get_parameter('map_topic').value
         self.info_radius = float(self.get_parameter('info_radius').value)
@@ -51,11 +46,6 @@ class AssignerNode(Node):
         self.min_target_distance = float(self.get_parameter('min_target_distance').value)
         self.repeat_target_radius = float(self.get_parameter('repeat_target_radius').value)
         self.repeat_target_cooldown = float(self.get_parameter('repeat_target_cooldown').value)
-        self.reached_penalty_radius = float(self.get_parameter('reached_penalty_radius').value)
-        self.reached_penalty_factor = float(self.get_parameter('reached_penalty_factor').value)
-        self.momentum_gain = float(self.get_parameter('momentum_gain').value)
-        self.nearby_cluster_radius = float(self.get_parameter('nearby_cluster_radius').value)
-        self.nearby_cluster_gain = float(self.get_parameter('nearby_cluster_gain').value)
 
         self.frontiers = []
         self.mapData = OccupancyGrid()
@@ -65,9 +55,6 @@ class AssignerNode(Node):
         self.last_sent_target_time_ns = 0
         self.goal_visual_active = False
         self.goal_sequence = 0
-        # History of reached positions — penalize going back there
-        self.reached_history = []
-        self.prev_robot_position = None
 
         latched_map_qos = QoSProfile(depth=1)
         latched_map_qos.reliability = ReliabilityPolicy.RELIABLE
@@ -192,13 +179,6 @@ class AssignerNode(Node):
         msg.nav_status = int(nav_status)
         self.goal_event_pub.publish(msg)
 
-        # Record reached positions to penalize revisits
-        if event_type == 'reached':
-            self.reached_history.append(np.array([point[0], point[1]], dtype=float))
-            # Keep history bounded
-            if len(self.reached_history) > 100:
-                self.reached_history = self.reached_history[-100:]
-
     def mapCallBack(self, data):
         self.mapData = data
 
@@ -249,70 +229,26 @@ class AssignerNode(Node):
         centroid_record = []
         id_record = []
 
-        now_ns = self.get_clock().now().nanoseconds
-
         for robot_idx in available:
             robot_obj = self.robots[robot_idx]
             robot_position = robot_positions[robot_idx]
-
-            # Compute heading direction for momentum bonus
-            heading_vec = None
-            if self.prev_robot_position is not None:
-                move_vec = robot_position - self.prev_robot_position
-                move_dist = norm(move_vec)
-                if move_dist > 0.05:
-                    heading_vec = move_vec / move_dist
-
             for centroid_idx, centroid in enumerate(centroids):
-                if not point_in_map(self.mapData, centroid):
-                    continue
-                if gridValue(self.mapData, centroid) != 0:
-                    continue
                 cost = norm(robot_position - centroid)
                 if cost < self.min_target_distance:
                     continue
 
-                # Skip recently visited targets
                 if self.last_sent_target is not None:
-                    age_sec = (now_ns - self.last_sent_target_time_ns) / 1e9
+                    age_sec = (self.get_clock().now().nanoseconds - self.last_sent_target_time_ns) / 1e9
                     if age_sec < self.repeat_target_cooldown and norm(self.last_sent_target - centroid) < self.repeat_target_radius:
                         continue
 
                 information_gain = info_gain[centroid_idx]
-
-                # 1) Hysteresis: prefer frontiers near robot (short range only)
                 if cost <= self.hysteresis_radius:
                     information_gain *= self.hysteresis_gain
-
-                # 2) Momentum: prefer frontiers in current heading direction
-                if heading_vec is not None and cost > 0.3:
-                    dir_to_centroid = (centroid - robot_position) / cost
-                    dot = float(np.dot(heading_vec, dir_to_centroid))
-                    # dot in [-1, 1], scale to [0, momentum_gain]
-                    momentum_bonus = max(0.0, dot) * self.momentum_gain
-                    information_gain += momentum_bonus
-
-                # 3) Nearby cluster: if robot has active target, prefer frontiers near that target
-                if busy and len(self.robots[busy[0]].assigned_point) > 0:
-                    active_target = self.robots[busy[0]].assigned_point
-                    dist_to_active = norm(centroid - active_target)
-                    if dist_to_active < self.nearby_cluster_radius:
-                        information_gain *= self.nearby_cluster_gain
-
-                # 4) Reached history penalty: penalize areas already explored
-                for reached_pt in self.reached_history:
-                    if norm(centroid - reached_pt) < self.reached_penalty_radius:
-                        information_gain *= self.reached_penalty_factor
-                        break
-
                 revenue = information_gain * self.info_multiplier - cost
                 revenue_record.append(revenue)
                 centroid_record.append(np.array(centroid, dtype=float))
                 id_record.append(robot_idx)
-
-        # Update prev position for next cycle
-        if available:
-            self.prev_robot_position = np.array(robot_positions[available[0]], dtype=float)
 
         if len(id_record) < 1:
             self.throttled_info('No valid frontier beyond min_target_distance')
@@ -323,16 +259,12 @@ class AssignerNode(Node):
         robot_obj = self.robots[robot_idx]
         target = np.array(centroid_record[winner_idx], dtype=float)
 
-        if not point_in_map(self.mapData, target) or gridValue(self.mapData, target) != 0:
-            self.get_logger().warn(f'Skipping non-free target candidate {target}')
-            return
-
         if len(robot_obj.assigned_point) > 0 and norm(robot_obj.assigned_point - target) < self.repeat_target_radius:
             if robot_obj.getState() == 1:
                 return
 
         if self.last_sent_target is not None:
-            age_sec = (now_ns - self.last_sent_target_time_ns) / 1e9
+            age_sec = (self.get_clock().now().nanoseconds - self.last_sent_target_time_ns) / 1e9
             if age_sec < self.repeat_target_cooldown and norm(self.last_sent_target - target) < self.repeat_target_radius:
                 return
 
@@ -341,7 +273,7 @@ class AssignerNode(Node):
 
         robot_obj.sendGoal(target, goal_id=goal_id)
         self.last_sent_target = np.array(target, dtype=float)
-        self.last_sent_target_time_ns = now_ns
+        self.last_sent_target_time_ns = self.get_clock().now().nanoseconds
         self.publish_goal_visualization(robot_positions[robot_idx], target)
         self.get_logger().info(f'Robot {robot_idx} assigned goal_id={goal_id} to {target}')
 

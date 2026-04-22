@@ -1,16 +1,16 @@
 # SSTG Perception Module Configuration
 
 # API Configuration
-api_key: "sk-942e8661f10f492280744a26fe7b953b"
+api_key: ""  # 从环境变量或命令行传入
 api_base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
 vlm_model: "qwen-vl-plus"
 
 # Camera Topics
-rgb_topic: "/camera/color/image_raw"
+rgb_topic: "/camera/rgb/image_raw"
 depth_topic: "/camera/depth/image_raw"
 
 # Storage Configuration
-panorama_storage_path: "~/wbt_ws/sstg-nav/sstg_nav_ws/src/sstg_rrt_explorer/captured_nodes"
+panorama_storage_path: "/tmp/sstg_perception"
 image_format: "png"  # png or jpg
 
 # VLM Configuration

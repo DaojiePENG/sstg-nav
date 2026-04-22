@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange)](LICENSE)
 
-**Spatial Semantic Topological Graph Navigation System** - 智能机器人导航的完整解决方案 | V3
+**Spatial Semantic Topological Graph Navigation System** - 智能机器人导航的完整解决方案
 
 ## 🌟 项目概述
 
@@ -18,8 +18,6 @@ SSTG导航系统是一个基于ROS2的智能机器人导航框架，集成了自
 - 🤖 **智能规划**: 语义驱动的路径规划和决策
 - 📊 **实时监控**: 完整的导航状态反馈和进度跟踪
 - 🔄 **任务管理**: 支持任务取消、状态查询和错误恢复
-- 🔍 **智能物体搜索**: 记忆召回 + 多节点并行 VLM 检查 + 距离感知裁决
-- 💬 **实时搜索反馈**: 双消息机制（ROS 硬数据 + LLM 润色），搜索过程可视化
 
 ## 📦 系统架构
 
@@ -30,7 +28,7 @@ graph TB
     User["👤 User Input<br/>(Text/Image)"]
     
     subgraph Core["核心处理管道"]
-        IM["🔄 Interaction Manager<br/>任务编排 + 搜索裁决"]
+        IM["🔄 Interaction Manager<br/>任务编排"]
         NLP["🧠 NLP Interface<br/>意图识别 + VLM"]
         Planner["📍 Navigation Planner<br/>语义规划"]
         Executor["⚡ Navigation Executor<br/>导航执行"]
@@ -39,7 +37,6 @@ graph TB
     subgraph Data["数据层"]
         MapMgr["🗺️ Map Manager<br/>拓扑地图"]
         Perception["👁️ Perception<br/>语义感知"]
-        VitePlugin["🌐 Vite Plugin Server<br/>聊天持久化 + LLM 桥接"]
     end
     
     subgraph Physical["物理控制"]
@@ -59,7 +56,6 @@ graph TB
     Nav2 -->|状态反馈| Executor
     Executor -->|进度更新| IM
     Perception -->|语义标注| MapMgr
-    IM -->|ChatEvent HTTP| VitePlugin
     
     style User fill:#e1f5ff
     style Core fill:#f3e5f5
@@ -77,7 +73,6 @@ graph TB
 | **Map Manager** | 地图存储、语义查询、节点管理 | 查询请求 | 节点信息、拓扑图 |
 | **Navigation Executor** | 导航执行、进度监控、反馈 | 目标位置 | 导航状态、反馈 |
 | **Perception** | 多模态感知、语义标注 | 图像、场景 | 语义标签、对象信息 |
-| **Vite Plugin Server** | 聊天持久化、LLM 调用、ROS 事件桥接、Memory Recall | HTTP/SSE | 聊天消息、搜索气泡 |
 | **Nav2** | 底层路径规划、障碍避免、控制 | 目标姿态 | 运动指令 |
 
 ### 核心数据流示例
@@ -144,15 +139,11 @@ sequenceDiagram
 │   │   ├── sstg_navigation_executor/# 导航执行
 │   │   ├── sstg_interaction_manager/# 任务编排
 │   │   └── sstg_perception/         # 感知模块
-│   │   ├── sstg_rrt_explorer/       # RRT 自主探索
-│   │   └── sstg_system_manager/     # 系统管理
 │   ├── build/ & install/
 │   └── README.md & INSTALLATION.md
 │
 └── 📁 yahboomcar_ws/                # YahboomCar工作空间
     └── src/                         # 机器人控制包（不含SSTG）
-└── 📁 sstg_ui_app/                  # Web UI（React + Vite）
-    └── src/                         # 前端源码
 ```
 
 ### 核心组件
@@ -187,7 +178,10 @@ sequenceDiagram
    - VLM语义标注
    - 物体识别和场景理解
 
-7. **`sstg_msgs`** - 统一接口定义（V3: 13 个消息类型 + 19 个服务接口）
+7. **`sstg_msgs`** - 统一接口定义
+   - 7个核心消息类型
+   - 8个服务接口
+   - 标准化通信格式
 
 ## � 工作空间架构
 
@@ -313,10 +307,10 @@ ros2 service call /cancel_task std_srvs/srv/Trigger
 
 ## 📚 文档资源
 
-- **[UI 操作指南](SSTG_UI_Guide.md)** - Web UI 使用手册
 - **[用户指南](SSTG_User_Guide.md)** - 完整使用手册和实验指导
-- **[V3 系统架构](SSTG_V3_System_Architecture.md)** - V3 完整架构文档
 - **[项目总结](PROJECT_SUMMARY.md)** - 开发完成情况和项目亮点
+- **[技术规划](SSTG-Nav-Plan.md)** - 系统架构和设计文档
+- **[开发进度](PROJECT_PROGRESS.md)** - 详细开发历程
 
 ### 各模块文档
 
@@ -420,7 +414,7 @@ ros2 run rqt_runtime_monitor rqt_runtime_monitor
 **项目维护者**: Daojie Peng
 - Email: Daojie.PENG@qq.com
 - 项目日期: 2026-03-25
-- 状态: ✅ **V3 Production Ready**
+- 状态: ✅ **Phase 4 Complete - Production Ready**
 
 ---
 

@@ -1,5 +1,0 @@
-string task_id
-bool confirmed
----
-bool success
-string message

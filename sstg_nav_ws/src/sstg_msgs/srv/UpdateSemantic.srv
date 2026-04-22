@@ -1,6 +1,5 @@
 int32 node_id
 sstg_msgs/SemanticData semantic_data
-int32 angle  # -1=节点级(默认), 0/90/180/270=方向级
 ---
 bool success
 string message

@@ -38,18 +38,13 @@ class TextProcessor:
     
     # 常见意图模式
     INTENT_PATTERNS = {
-        'explore_new_home': [
-            r'(探索|建图|探测|扫描)(这个|这|一下|)?(新家|家|房间|环境|房子|地方)',
-            r'(帮我|请|开始)(探索|建图|扫描)',
-            r'(explore|scan|map)\s*(this|the|my)?\s*(home|house|room|environment)',
-        ],
         'navigate_to': [
             r'(去|前往|导航到|导航至|移动到|走到|来到|到达)([^。，；]*)',
             r'(带我去|我要去|请去|要去)([^。，；]*)',
             r'([^。，；]*)是在哪里|([^。，；]*)在哪\?',
         ],
         'locate_object': [
-            r'(找|查找|搜索|寻找|看|看看)([^。，；]+)',
+            r'(找|查找|搜索|寻找|看|看看)([^。，；]*)',
             r'([^。，；]*)在.*吗|([^。，；]*)呢\?',
             r'(有没有|有没|有没有看到)([^。，；]*)',
         ],
@@ -81,27 +76,22 @@ class TextProcessor:
     def process(self, text: str) -> TextQuery:
         """
         处理文本输入
-
+        
         Args:
             text: 输入文本
-
+            
         Returns:
             TextQuery: 处理后的查询对象
         """
+        # 清理文本
         cleaned = self._clean_text(text)
-
-        intent, confidence, groups = self._recognize_intent(cleaned)
-
+        
+        # 识别意图
+        intent, confidence = self._recognize_intent(cleaned)
+        
+        # 提取实体
         entities = self._extract_entities(cleaned)
-
-        # 从 regex capture group 提取目标 (locate_object / navigate_to)
-        if intent in ('locate_object', 'navigate_to') and groups:
-            for g in groups:
-                if g and g.strip() and len(g.strip()) > 0:
-                    target = g.strip()
-                    if target not in entities and len(target) <= 20:
-                        entities.append(target)
-
+        
         query = TextQuery(
             text=text,
             language='zh',
@@ -109,7 +99,7 @@ class TextProcessor:
             entities=entities,
             confidence=confidence
         )
-
+        
         return query
     
     def _clean_text(self, text: str) -> str:
@@ -133,36 +123,36 @@ class TextProcessor:
     def _recognize_intent(self, text: str) -> tuple:
         """
         识别用户意图
-
+        
         Args:
             text: 清理后的文本
-
+            
         Returns:
-            tuple: (意图, 置信度, 匹配到的 capture groups)
+            tuple: (意图, 置信度)
         """
         best_intent = None
         best_confidence = 0.0
-        best_groups = ()
-
+        
         for intent, patterns in self.INTENT_PATTERNS.items():
             for pattern in patterns:
                 try:
                     match = re.search(pattern, text)
                     if match:
+                        # 简单的置信度计算：匹配长度 / 文本长度
                         confidence = len(match.group(0)) / len(text)
-
+                        
                         if confidence > best_confidence:
                             best_confidence = confidence
                             best_intent = intent
-                            best_groups = match.groups()
                 except re.error:
                     continue
-
+        
+        # 默认查询意图
         if best_intent is None:
             best_intent = 'query_info'
             best_confidence = 0.5
-
-        return best_intent, best_confidence, best_groups
+        
+        return best_intent, best_confidence
     
     def _extract_entities(self, text: str) -> List[str]:
         """
