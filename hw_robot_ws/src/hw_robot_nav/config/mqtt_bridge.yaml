@@ -1,0 +1,20 @@
+/mqtt_to_ros_bridge_node:
+  ros__parameters:
+    mqtt_broker_ip: "192.168.0.6"
+    mqtt_port: 1883
+    mqtt_topic: "wifi/car_status"
+    imu_topic: "/imu"
+    odom_topic: "/odom"
+    odom_frame_id: "odom"
+    base_frame_id: "base_footprint"
+    publish_rate: 50.0
+    publish_tf: true
+
+    # Set true if yaw_angle from MQTT is degrees instead of radians.
+    yaw_in_degrees: true
+    yaw_offset: 0.0
+
+    # Use these if the bridge data uses a different unit or sign convention.
+    linear_velocity_scale: 0.01
+    angular_velocity_scale: 1.0
+    data_timeout_sec: 2.0

@@ -1,0 +1,8 @@
+/cmd_vel_to_serial:
+  ros__parameters:
+    serial_port: "/dev/ttyTHS1"
+    serial_baud: 115200
+    cmd_vel_topic: "/cmd_vel"
+    linear_scale: 80.0    # 修改这个值
+    angular_scale: 1.0
+    cmd_timeout_sec: 0.5
